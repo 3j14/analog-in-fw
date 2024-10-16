@@ -1,3 +1,3 @@
-[submodule "ip/analog_devices_hdl"]
-	path = ip/analog_devices_hdl
+[submodule "library/analog_devices_hdl"]
+	path = library/analog_devices_hdl
 	url = git@github.com:analogdevicesinc/hdl.git

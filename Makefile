@@ -10,11 +10,16 @@ ifeq ($(name),)
 	@echo "Error: 'name' not set. Usage: make project name=<project_name>"
 	@exit 1
 else
-	$(MAKE) build/projects/$(name).xpr
+	$(MAKE) build/projects/$(name)/
 endif
 
-build/projects/%/project.xpr:
+build/projects/%/:
 	# Create target directory
 	mkdir -p $(@D)
-	$(VIVADO) -source projects/$*/system_project.tcl -tclargs $* $(PART) $@
+	# Run the project script
+	$(VIVADO) -source scripts/project.tcl -tclargs $* $(PART) $@
+
+clean:
+	# Remove the build directory
+	rm -rf build
 
