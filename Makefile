@@ -3,7 +3,8 @@ SHELL=/bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 PART ?= xc7z010clg400-1
-VIVADO = vivado -nolog -nojournal
+VIVADO = vivado -nolog -nojournal -mode batch
+VIVADO_ARGS ?= -mode batch -log build/vivado.log -journal build/vivado.jou
 
 project:
 ifeq ($(name),)
