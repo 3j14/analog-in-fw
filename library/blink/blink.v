@@ -3,10 +3,10 @@ module blink (
     input  rst,
     output led
 );
-    logic [31:0] counter;
+    reg [31:0] counter;
     assign led = counter[22];
 
-    always_ff @(posedge clk or posedge rst) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             counter <= 32'b0;
         end else begin

@@ -23,6 +23,30 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# Clock input
+set_property IOSTANDARD DIFF_HSTL_I_18 [get_ports adc_clk_p_i]
+set_property IOSTANDARD DIFF_HSTL_I_18 [get_ports adc_clk_n_i]
+set_property PACKAGE_PIN U18 [get_ports adc_clk_p_i]
+set_property PACKAGE_PIN U19 [get_ports adc_clk_n_i]
+set_input_delay -max 1.000 -clock adc_clk_p_i [get_ports adc_dat_a_i[*]]
+set_input_delay -max 1.000 -clock adc_clk_p_i [get_ports adc_dat_b_i[*]]
+
+# Clock output
+set_property IOSTANDARD LVCMOS18 [get_ports adc_enc_p_o]
+set_property IOSTANDARD LVCMOS18 [get_ports adc_enc_n_o]
+set_property SLEW FAST [get_ports adc_enc_p_o]
+set_property SLEW FAST [get_ports adc_enc_n_o]
+set_property DRIVE 8 [get_ports adc_enc_p_o]
+set_property DRIVE 8 [get_ports adc_enc_n_o]
+set_property PACKAGE_PIN N20 [get_ports adc_enc_p_o]
+set_property PACKAGE_PIN P20 [get_ports adc_enc_n_o]
+
+# Clock duty cycle stabilizer (CSn)
+set_property IOSTANDARD LVCMOS18 [get_ports adc_csn_o]
+set_property PACKAGE_PIN V18 [get_ports adc_csn_o]
+set_property SLEW FAST [get_ports adc_csn_o]
+set_property DRIVE 8 [get_ports adc_csn_o]
+
 # LEDs
 set_property IOSTANDARD LVCMOS33 [get_ports {led_o[*]}]
 set_property SLEW SLOW [get_ports {led_o[*]}]

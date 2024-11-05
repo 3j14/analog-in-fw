@@ -1,0 +1,25 @@
+name: Lint HDL
+on:
+  push:
+  pull_request:
+
+# Avoid multiple tests running on the same reference
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chipsalliance/verible-linter-action@main
+        with:
+          paths:
+            ./library
+            ./projects
+          exclude_paths:
+            ./library/analog_devices_hdl
+
