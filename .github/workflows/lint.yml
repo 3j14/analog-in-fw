@@ -22,4 +22,5 @@ jobs:
             ./projects
           exclude_paths:
             ./library/analog_devices_hdl
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
