@@ -15,4 +15,4 @@ add_files -norecurse build/projects/blink/blink.gen/sources_1/bd/bd_blink/hdl/bd
 set_property top bd_blink_wrapper [current_fileset]
 update_compile_order -fileset sources_1
 
-#synth_design -top blink -part $part -lint
+#synth_design -name lint_0 -top blink -part $part -lint

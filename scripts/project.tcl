@@ -1,4 +1,4 @@
-# Usage: system_project.tcl <name> <part> <out_dir>
+# Usage: project.tcl <name> <part> <out_dir>
 
 set name [lindex $argv 0]
 set part [lindex $argv 1]

@@ -2,24 +2,33 @@ SHELL=/bin/bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
 
+PROJECT ?= blink
 PART ?= xc7z010clg400-1
-VIVADO = vivado -nolog -nojournal -mode batch
+VIVADO = vivado
 VIVADO_ARGS ?= -mode batch -log build/vivado.log -journal build/vivado.jou
 
-project:
-ifeq ($(name),)
-	@echo "Error: 'name' not set. Usage: make project name=<project_name>"
-	@exit 1
-else
-	$(MAKE) build/projects/$(name)/
-endif
+SOURCES = $(wildcard ./library/*/*.v) \
+		  $(wildcard ./library/*/*.sv) \
+		  $(wildcard ./projects/$(PROJECT)/*.v) \
+		  $(wildcard ./projects/$(PROJECT)/*.sv) \
+		  $(wildcard ./projects/$(PROJECT)/*.tcl) \
+		  $(wildcard ./contraints/*.xdc) \
+		  $(wildcard ./contraints/*.tcl)
 
-build/projects/%/:
-	# Create target directory
+test:
+	echo $(SOURCES)
+
+PROJECTS = $(subst ./projects/,,$(wildcard ./projects/*))
+
+build/projects/$(PROJECT)/$(PROJECT).xpr: projects/$(PROJECT)/
 	mkdir -p $(@D)
 	# Run the project script
-	$(VIVADO) -source scripts/project.tcl -tclargs $* $(PART) $@
+	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
 
+build/projects/$(PROJECT)/$(PROJECT).runs/impl_1: build/projects/$(PROJECT)/$(PROJECT).xpr
+	# TODO: Run impl
+
+.PHONY: clean
 clean:
 	# Remove the build directory
 	rm -rf build
