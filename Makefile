@@ -29,7 +29,7 @@ SOURCES += $(_SPI_ENGINE_ALL)
 
 PROJECTS = $(subst ./projects/,,$(wildcard ./projects/*))
 
-build/projects/$(PROJECT)/$(PROJECT).xpr: projects/$(PROJECT)/
+build/projects/$(PROJECT)/$(PROJECT).xpr: $(SOURCES)
 	mkdir -p $(@D)
 	# Run the project script
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
