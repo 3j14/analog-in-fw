@@ -11,8 +11,11 @@ _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
 # Targets for Analog Devices' SPI Engine
 SPI_ENGINE_IPS := $(dir $(shell find library/analog_devices_hdl/library/spi_engine -name Makefile))
-_SPI_ENGINE_ALL := $(addsuffix all, $(SPI_ENGINE_IPS))
-_SPI_ENGINE_CLEAN := $(addsuffix clean, $(SPI_ENGINE_IPS))
+AXI_PWM_GEN_IP := $(dir $(shell find library/analog_devices_hdl/library/axi_pwm_gen -name Makefile))
+_ADI_HDL_ALL := $(addsuffix all, $(SPI_ENGINE_IPS))
+_ADI_HDL_ALL += $(addsuffix all, $(AXI_PWM_GEN_IP))
+_ADI_HDL_CLEAN := $(addsuffix clean, $(SPI_ENGINE_IPS))
+_ADI_HDL_CLEAN += $(addsuffix clean, $(AXI_PWM_GEN_IP))
 
 # Overwrite Analog Devices' Vivado version check
 REQUIRED_VIVADO_VERSION ?= 2024.1.2
@@ -25,7 +28,7 @@ SOURCES += $(wildcard ./projects/$(PROJECT)/*.sv)
 SOURCES += $(wildcard ./projects/$(PROJECT)/*.tcl)
 SOURCES += $(wildcard ./contraints/*.xdc)
 SOURCES += $(wildcard ./contraints/*.tcl)
-SOURCES += $(_SPI_ENGINE_ALL)
+SOURCES += $(_ADI_HDL_CLEAN)
 
 PROJECTS = $(subst ./projects/,,$(wildcard ./projects/*))
 
@@ -37,17 +40,17 @@ build/projects/$(PROJECT)/$(PROJECT).xpr: $(SOURCES)
 build/projects/$(PROJECT)/$(PROJECT).runs/impl_1: build/projects/$(PROJECT)/$(PROJECT).xpr
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
 
-$(_SPI_ENGINE_ALL):
+$(_ADI_HDL_ALL):
 	$(MAKE) -C $(@D) all
 
-$(_SPI_ENGINE_CLEAN):
+$(_ADI_HDL_CLEAN):
 	$(MAKE) -C $(@D) clean
 
-.PHONY: spi_engine
-spi_engine: $(_SPI_ENGINE_ALL)
+.PHONY: adihdl
+adihdl: $(_ADI_HDL_ALL)
 
 .PHONY: clean
-clean: $(_SPI_ENGINE_CLEAN)
+clean: $(_ADI_HDL_CLEAN)
 	# Remove the build directory
 	rm -rf build
 
