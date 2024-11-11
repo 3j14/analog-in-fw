@@ -9,22 +9,31 @@ set_property -dict [list \
     CONFIG.PRIM_SOURCE Differential_clock_capable_pin \
     CONFIG.CLKOUT1_USED {true} \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {125.0} \
-    CONFIG.USE_RESET {false} \
 ] [get_bd_cells /clk_wiz_0]
 
 create_bd_port -dir I adc_clk_p_i
 create_bd_port -dir I adc_clk_n_i
+connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
+connect_bd_net [get_bd_ports adc_clk_n_i] [get_bd_pins clk_wiz_0/clk_in1_n]
 
 create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps_0
+set_property \
+    CONFIG.PCW_IMPORT_BOARD_PRESET "library/pavel-red-pitaya-notes/cfg/red_pitaya.xml" \
+    [get_bd_cells /ps_0]
 
 connect_bd_net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins ps_0/M_AXI_GP0_ACLK]
 
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {
-  make_external {FIXED_IO, DDR}
+make_external {FIXED_IO, DDR}
   Master "Disable"
   Slave "Disable"
 } [get_bd_cells ps_0]
 
+create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant const_0
+create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset rst_0
+connect_bd_net [get_bd_pins rst_0/ext_reset_in] [get_bd_pins const_0/dout]
+connect_bd_net [get_bd_pins rst_0/dcm_locked] [get_bd_pins clk_wiz_0/locked]
+connect_bd_net [get_bd_pins rst_0/slowest_sync_clk] [get_bd_pins clk_wiz_0/clk_out1]
 
 set sampling_rate 1000000
 set num_sdi 4
