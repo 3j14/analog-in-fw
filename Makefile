@@ -28,7 +28,7 @@ SOURCES += $(wildcard ./projects/$(PROJECT)/*.sv)
 SOURCES += $(wildcard ./projects/$(PROJECT)/*.tcl)
 SOURCES += $(wildcard ./contraints/*.xdc)
 SOURCES += $(wildcard ./contraints/*.tcl)
-SOURCES += $(_ADI_HDL_CLEAN)
+SOURCES += $(_ADI_HDL_ALL)
 
 PROJECTS = $(subst ./projects/,,$(wildcard ./projects/*))
 
