@@ -24,7 +24,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # Clock input
-make_diff_pair_ports adc_clk_p_i adc_clk_n_i
+# make_diff_pair_ports adc_clk_p_i adc_clk_n_i
 set_property IOSTANDARD DIFF_HSTL_I_18 [get_ports adc_clk_*_i]
 set_property direction IN [get_ports {adc_clk_*_i}]
 set_property PACKAGE_PIN U18 [get_ports adc_clk_p_i]
@@ -174,10 +174,10 @@ set_property PACKAGE_PIN E19 [get_ports vaux9_v_n]
 
 # SATA connectors
 set_property IOSTANDARD DIFF_HSTL_I_18 [get_ports daisy_*_*[*]]
-make_diff_pair_ports daisy_p_o[0] daisy_n_o[0]
-make_diff_pair_ports daisy_p_o[1] daisy_n_o[1]
-make_diff_pair_ports daisy_p_i[0] daisy_n_i[0]
-make_diff_pair_ports daisy_p_i[1] daisy_n_i[1]
+# make_diff_pair_ports daisy_p_o[0] daisy_n_o[0]
+# make_diff_pair_ports daisy_p_o[1] daisy_n_o[1]
+# make_diff_pair_ports daisy_p_i[0] daisy_n_i[0]
+# make_diff_pair_ports daisy_p_i[1] daisy_n_i[1]
 set_property PACKAGE_PIN T12 [get_ports {daisy_p_o[0]}]
 set_property PACKAGE_PIN U12 [get_ports {daisy_n_o[0]}]
 set_property PACKAGE_PIN U14 [get_ports {daisy_p_o[1]}]
