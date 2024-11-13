@@ -10,12 +10,11 @@ VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
 # Targets for Analog Devices' SPI Engine
-SPI_ENGINE_IPS := $(dir $(shell find library/analog_devices_hdl/library/spi_engine -name Makefile))
-AXI_PWM_GEN_IP := $(dir $(shell find library/analog_devices_hdl/library/axi_pwm_gen -name Makefile))
-_ADI_HDL_ALL := $(addsuffix all, $(SPI_ENGINE_IPS))
-_ADI_HDL_ALL += $(addsuffix all, $(AXI_PWM_GEN_IP))
-_ADI_HDL_CLEAN := $(addsuffix clean, $(SPI_ENGINE_IPS))
-_ADI_HDL_CLEAN += $(addsuffix clean, $(AXI_PWM_GEN_IP))
+_ADI_HDL_IPS := $(dir $(shell find library/analog_devices_hdl/library/spi_engine -name Makefile))
+_ADI_HDL_IPS += $(dir $(shell find library/analog_devices_hdl/library/axi_pwm_gen -name Makefile))
+_ADI_HDL_IPS += $(dir $(shell find library/analog_devices_hdl/library/ad463x_data_capture -name Makefile))
+_ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
+_ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
 
 # Overwrite Analog Devices' Vivado version check
 REQUIRED_VIVADO_VERSION ?= 2024.1.2
