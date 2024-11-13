@@ -9,4 +9,5 @@ source ./projects/$name/system.tcl
 
 # create_fileset -constrset constrs_1
 add_files -fileset constrs_1 -norecurse constraints/redpitaya.xdc
+add_files -fileset constrs_1 -norecurse constraints/clocks.xdc
 
