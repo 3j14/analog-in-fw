@@ -8,11 +8,3 @@ set_property top blink [current_fileset]
 update_compile_order -fileset sources_1
 
 source projects/blink/bd_blink.tcl
-
-generate_target all [get_files bd_blink.bd]
-make_wrapper -files [get_files bd_blink.bd] -top
-add_files -norecurse build/projects/blink/blink.gen/sources_1/bd/bd_blink/hdl/bd_blink_wrapper.v
-set_property top bd_blink_wrapper [current_fileset]
-update_compile_order -fileset sources_1
-
-#synth_design -name lint_0 -top blink -part $part -lint

@@ -1,10 +1,11 @@
 source $ad_hdl_dir/library/spi_engine/scripts/spi_engine.tcl
 
+set adc_clk_in_freq 125.0
 set ref_clk_freq 125.0
 set spi_clk_freq 100.0
 set sampling_rate 1.0
 set num_sdi 4
-set n_cycles [expr int(ceil(double($ref_clk) / double($sampling_rate)))]
+set n_cycles [expr int(ceil(double($ref_clk_freq) / double($sampling_rate)))]
 
 create_bd_design bd_spitest
 
@@ -12,7 +13,7 @@ create_bd_design bd_spitest
 # ADC SPI
 create_bd_port -dir O exp_adc_sck
 create_bd_port -dir O exp_adc_csn
-create_bd_port-dir O exp_adc_resetn
+create_bd_port -dir O exp_adc_resetn
 create_bd_port -dir O exp_adc_sdo
 create_bd_port -dir I -from [expr $num_sdi-1] -to 0 exp_adc_sdi
 create_bd_port -dir I exp_adc_busy
@@ -37,6 +38,8 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0
 set_property -dict [list \
     CONFIG.PRIMITIVE PLL \
     CONFIG.PRIM_SOURCE Differential_clock_capable_pin \
+    CONFIG.PRIM_IN_FREQ $adc_clk_in_freq \
+    CONFIG.CLKIN1_UI_JITTER {0.0001} \
     CONFIG.CLKOUT1_USED {true} \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ $ref_clk_freq \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $spi_clk_freq \

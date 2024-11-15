@@ -11,3 +11,9 @@ source ./projects/$name/system.tcl
 add_files -fileset constrs_1 -norecurse constraints/redpitaya.xdc
 add_files -fileset constrs_1 -norecurse constraints/clocks.xdc
 
+generate_target all [get_files bd_${name}.bd]
+make_wrapper -files [get_files bd_${name}.bd] -top
+add_files -norecurse build/projects/${name}/${name}.gen/sources_1/bd/bd_${name}/hdl/bd_${name}_wrapper.v
+set_property top bd_${name}_wrapper [current_fileset]
+update_compile_order -fileset sources_1
+
