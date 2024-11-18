@@ -17,7 +17,7 @@ _ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
 _ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
 
 # Targets for Pavel Demin's Red Pitaya Notes
-_RED_PITAYA_NOTES_DIR := library/pavel-red-pitaya-notes
+_RED_PITAYA_NOTES_DIR := library/red-pitaya-notes
 _PD_FILES := $(wildcard $(_RED_PITAYA_NOTES_DIR)/cores/*.v)
 _PD_CORES := $(basename $(notdir $(_PD_FILES)))
 _PD_CORES_BUILD_DIRS := $(addprefix $(_RED_PITAYA_NOTES_DIR)/tmp/cores/, $(_PD_CORES))

@@ -2,5 +2,5 @@
 	path = library/analog_devices_hdl
 	url = git@github.com:analogdevicesinc/hdl.git
 [submodule "library/pavel-red-pitaya-notes"]
-	path = library/pavel-red-pitaya-notes
+	path = library/red-pitaya-notes
 	url = git@github.com:pavel-demin/red-pitaya-notes.git
