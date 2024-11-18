@@ -16,6 +16,12 @@ _ADI_HDL_IPS += $(dir $(shell find library/analog_devices_hdl/library/ad463x_dat
 _ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
 _ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
 
+# Targets for Pavel Demin's Red Pitaya Notes
+_RED_PITAYA_NOTES_DIR := library/pavel-red-pitaya-notes
+_PD_FILES := $(wildcard $(_RED_PITAYA_NOTES_DIR)/cores/*.v)
+_PD_CORES := $(basename $(notdir $(_PD_FILES)))
+_PD_CORES_BUILD_DIRS := $(addprefix $(_RED_PITAYA_NOTES_DIR)/tmp/cores/, $(_PD_CORES))
+
 # Overwrite Analog Devices' Vivado version check
 REQUIRED_VIVADO_VERSION ?= 2024.1.2
 export REQUIRED_VIVADO_VERSION
@@ -27,9 +33,14 @@ SOURCES += $(wildcard ./projects/$(PROJECT)/*.sv)
 SOURCES += $(wildcard ./projects/$(PROJECT)/*.tcl)
 SOURCES += $(wildcard ./contraints/*.xdc)
 SOURCES += $(wildcard ./contraints/*.tcl)
+ifeq ($(PROJECT), spitest)
 SOURCES += $(_ADI_HDL_ALL)
+endif
+ifeq ($(PROJECT), spi)
+SOURCES += $(_PD_CORES_BUILD_DIRS)
+endif
 
-PROJECTS = $(subst ./projects/,,$(wildcard ./projects/*))
+PROJECTS = $(notdir $(wildcard ./projects/*))
 
 build/projects/$(PROJECT)/$(PROJECT).xpr: $(SOURCES)
 	mkdir -p $(@D)
@@ -45,11 +56,6 @@ $(_ADI_HDL_ALL):
 $(_ADI_HDL_CLEAN):
 	$(MAKE) -C $(@D) clean
 
-.PHONY: adihdl
-adihdl: $(_ADI_HDL_ALL)
-
-.PHONY: clean
-clean: $(_ADI_HDL_CLEAN)
-	# Remove the build directory
-	rm -rf build
+$(_PD_CORES_BUILD_DIRS): $(_PD_FILES)
+	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/cores/$(notdir $@)
 
