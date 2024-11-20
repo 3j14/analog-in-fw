@@ -35,18 +35,19 @@ module axis_exp_adc #(
 
     // Index of the current SPI clock cycle
     // Used for Conversion and RegAcces modes
-    reg [ 7:0] data_idx = 0;
-    localparam [7:0] MaxIdxCnv = DATA_WIDTH / NUM_SDI;
-    localparam [7:0] MaxIdxReg = 24;
+    reg [$clog2(DATA_WIDTH+1)-1:0] data_idx = 0;
+    localparam reg [$clog2(DATA_WIDTH+1)-1:0] MaxIdxCnv = DATA_WIDTH / NUM_SDI;
+    localparam reg [$clog2(DATA_WIDTH+1)-1:0] MaxIdxReg = 24;
 
     // Device modes
-    localparam reg Conversion = 1'b0;
-    localparam reg RegAccess = 1'b1;
-    reg device_mode = Conversion;
+    localparam reg [1:0] Conversion = 2'b00;
+    localparam reg [1:0] RegAccessOnce = 2'b01;
+    localparam reg [1:0] RegAccess = 2'b11;
+    reg [1:0] device_mode = Conversion;
     reg transaction_active = 0;
     reg reg_available = 0;
 
-    localparam reg [23:0] ExitReg = {1'b1, 15'h0014, 8'b1};
+    localparam reg [23:0] ExitReg = {1'b1, 15'h0014, 8'b01};
     //                write mode ----^^^^  ^^^^^^^^---- address
 
     // Used to gate the SPI clock
@@ -81,30 +82,32 @@ module axis_exp_adc #(
                         transaction_active <= 1;
                         spi_sck_enable <= 1;
                         cnv_data <= 0;
-                        data_idx <= 0;
+                        data_idx <= MaxIdxCnv;
                         spi_sdo <= 0;
                         m_axis_tvalid <= 0;
                     end
                 end
-                RegAccess: begin
+                RegAccessOnce, RegAccess: begin
                     if (reg_available) begin
                         transaction_active <= 1;
                         spi_sck_enable <= 1;
-                        data_idx <= 0;
+                        data_idx <= MaxIdxReg;
                         spi_sdo <= reg_data[MaxIdxReg-1];
                         reg_available <= 0;
                     end
                 end
             endcase
         end else begin
-            if (data_idx == ((device_mode == Conversion) ? MaxIdxCnv : MaxIdxReg)) begin
+            if (data_idx == 0) begin
                 transaction_active <= 0;
                 spi_sck_enable <= 0;
                 data_idx <= 0;
                 case (device_mode)
                     Conversion: m_axis_tvalid <= 1;
-                    RegAccess: begin
-                        if (reg_data == ExitReg) begin
+                    RegAccessOnce, RegAccess: begin
+                        if (reg_data[23:21] == 3'b101) begin
+                            device_mode <= RegAccess;
+                        end else if (reg_data == ExitReg) begin
                             // TODO: Check if this was the first transmission
                             // and the bits transmitted where 24'b101.
                             // Only then the device is actually
@@ -114,7 +117,7 @@ module axis_exp_adc #(
                     end
                 endcase
             end else begin
-                if (data_idx + 1 == ((device_mode == Conversion) ? MaxIdxCnv : MaxIdxReg)) begin
+                if (data_idx - 1 == 0) begin
                     // Clock has to be disabled one cycle in advance as it
                     // is synchronous with aclk.
                     spi_sck_enable <= 0;
@@ -136,15 +139,21 @@ module axis_exp_adc #(
                         // significant bits on the right.
                         cnv_data <= {cnv_data[DATA_WIDTH-1-NUM_SDI:0], spi_sdi};
                     end
-                    // NOTE: Because the first bit is already shifted out
-                    // at the falling edge of CSn, we have to shift out the
-                    // bits offset by 1 with respect to the index.
-                    // TODO: Fix last cycle is out of bounds. Just set to 0.
-                    RegAccess: spi_sdo <= reg_data[MaxIdxReg-2-data_idx];
-                    // TODO: There is currently no way of reading the
-                    // returned registers.
+                    RegAccessOnce, RegAccess: begin
+                        // NOTE: Because the first bit is already shifted out
+                        // at the falling edge of CSn, we have to shift out the
+                        // bits offset by 1 with respect to the index.
+                        // The last cycle can be skipped and the output set to 0.
+                        if (data_idx - 1 == 0) begin
+                            spi_sdo <= 0;
+                        end else begin
+                            spi_sdo <= reg_data[data_idx-2];
+                        end
+                        // TODO: There is currently no way of reading the
+                        // returned registers.
+                    end
                 endcase
-                data_idx <= data_idx + 1;
+                data_idx <= data_idx - 1;
             end
         end
     end
@@ -155,7 +164,9 @@ module axis_exp_adc #(
             if (s_axis_tvalid & s_axis_tready) begin
                 reg_data <= s_axis_tdata[23:0];
                 reg_available <= 1;
-                device_mode <= RegAccess;
+                if (device_mode != RegAccess) begin
+                    device_mode <= RegAccessOnce;
+                end
             end
         end
     end
