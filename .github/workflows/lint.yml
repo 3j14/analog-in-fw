@@ -22,7 +22,7 @@ jobs:
           files=$(find library \( -path library/red-pitaya-notes -o -path library/analog_devices_hdl \) -prune -false -o -name \*.v -o -name \*.sv)
           echo "Files:"
           echo $files
-          verible-actions-common $files
+          verible-verilog-lint $files
 
   verilator-lint:
     runs-on: ubuntu-24.04
