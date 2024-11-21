@@ -146,15 +146,15 @@ module axis_exp_adc #(
                 end
                 data_idx <= data_idx - 1;
             end
-        end
-        if (m_axis_tvalid & m_axis_tready) begin
-            m_axis_tvalid <= 0;
-        end
-        if (s_axis_tvalid & s_axis_tready) begin
-            reg_data <= s_axis_tdata[23:0];
-            reg_available <= 1;
-            if (device_mode != RegAccess) begin
-                device_mode <= RegAccessOnce;
+            if (m_axis_tvalid & m_axis_tready) begin
+                m_axis_tvalid <= 0;
+            end
+            if (s_axis_tvalid & s_axis_tready) begin
+                reg_data <= s_axis_tdata[23:0];
+                reg_available <= 1;
+                if (device_mode != RegAccess) begin
+                    device_mode <= RegAccessOnce;
+                end
             end
         end
     end
