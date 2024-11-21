@@ -1,8 +1,7 @@
 `timescale 1ns / 1ps
 
 module axis_exp_adc #(
-    parameter integer NUM_SDI = 4,
-    parameter integer DATA_WIDTH = 32
+    parameter integer NUM_SDI = 4
 ) (
     input wire aclk,
     input wire aresetn,
@@ -15,18 +14,20 @@ module axis_exp_adc #(
     output wire spi_sck,
     output wire spi_resetn,
     // AXI Stream input (register access mode)
-    input wire [DATA_WIDTH-1:0] s_axis_tdata,
+    input wire [DataWidth-1:0] s_axis_tdata,
     input wire s_axis_tvalid,
     output wire s_axis_tready,
     // AXI Stream output (conversion data)
-    output wire [DATA_WIDTH-1:0] m_axis_tdata,
+    output wire [DataWidth-1:0] m_axis_tdata,
     output reg m_axis_tvalid = 0,
     input wire m_axis_tready
 );
+    localparam integer DataWidth = 32;
+
     assign spi_resetn = aresetn;
 
     // Internal register holding the data that came from the ADC
-    reg [DATA_WIDTH-1:0] cnv_data = 0;
+    reg [DataWidth-1:0] cnv_data = 0;
     assign m_axis_tdata = cnv_data;
 
     // Internal register holding the register data to be written to
@@ -35,9 +36,9 @@ module axis_exp_adc #(
 
     // Index of the current SPI clock cycle
     // Used for Conversion and RegAcces modes
-    localparam integer IdxDataSize = $clog2(DATA_WIDTH + 1);
+    localparam integer IdxDataSize = $clog2(DataWidth + 1);
     reg [IdxDataSize-1:0] data_idx = 0;
-    localparam integer MaxIdxCnv = DATA_WIDTH / NUM_SDI;
+    localparam integer MaxIdxCnv = DataWidth / NUM_SDI;
     localparam integer MaxIdxReg = 24;
 
     // Device modes
@@ -76,12 +77,15 @@ module axis_exp_adc #(
             data_idx <= 0;
             transaction_active <= 0;
             spi_sck_enable <= 0;
-        end else if (~transaction_active) begin
-            transaction_active <= 1;
-            spi_sck_enable <= 1;
             spi_sdo <= 0;
             m_axis_tvalid <= 0;
-            if (device_mode == Conversion) begin
+            device_mode <= Conversion;
+            reg_available <= 0;
+        end else if (~transaction_active) begin
+            if (device_mode == Conversion && trigger) begin
+                transaction_active <= 1;
+                spi_sck_enable <= 1;
+                spi_sdo <= 0;
                 m_axis_tvalid <= 0;
                 data_idx <= MaxIdxCnv[IdxDataSize-1:0];
                 cnv_data <= 0;
@@ -116,7 +120,7 @@ module axis_exp_adc #(
                     //
                     // spi_data_in: 8'b01101010
                     // spi_sdo: 4'b1011
-                    // DATA_WIDTH = 8, NUM_SDI = 4.
+                    // DataWidth = 8, NUM_SDI = 4.
                     //
                     // Then, the concatenation looks as follows:
                     // {4'b1010, 4'b1011} == 8'b10101011
@@ -124,7 +128,7 @@ module axis_exp_adc #(
                     // The 'NUM_SDI' least significant bits of 'spi_data_in'
                     // are dropped and 'spi_sdo' is added to the most
                     // significant bits on the right.
-                    cnv_data <= {cnv_data[DATA_WIDTH-1-NUM_SDI:0], spi_sdi};
+                    cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
                 end else begin
                     // NOTE: Because the first bit is already shifted out
                     // at the falling edge of CSn, we have to shift out the
@@ -141,31 +145,15 @@ module axis_exp_adc #(
                 data_idx <= data_idx - 1;
             end
         end
-    end
-
-    always @(posedge aclk or negedge aresetn) begin
-        if (!aresetn) begin
-        end else begin
-            if (s_axis_tvalid & s_axis_tready) begin
-                reg_data <= s_axis_tdata[23:0];
-                reg_available <= 1;
-                if (device_mode != RegAccess) begin
-                    device_mode <= RegAccessOnce;
-                end
-            end
-        end
-    end
-
-    always @(posedge aclk or negedge aresetn) begin
-        if (!aresetn) begin
+        if (m_axis_tvalid & m_axis_tready) begin
             m_axis_tvalid <= 0;
-        end else begin
-            // Turn off TVALID once the subordinate (receiver) is ready
-            // Data is always presented on the m_axis_data bus.
-            if (m_axis_tvalid && m_axis_tready) begin
-                m_axis_tvalid <= 0;
+        end
+        if (s_axis_tvalid & s_axis_tready) begin
+            reg_data <= s_axis_tdata[23:0];
+            reg_available <= 1;
+            if (device_mode != RegAccess) begin
+                device_mode <= RegAccessOnce;
             end
         end
     end
-
 endmodule
