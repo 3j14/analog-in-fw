@@ -1,4 +1,5 @@
 `verilator_config
+lint_off -rule MULTITOP
 lint_off -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule MULTIDRIVEN -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule COMBDLY -file "/usr/share/yosys/xilinx/cells_sim.v"
