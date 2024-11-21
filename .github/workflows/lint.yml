@@ -3,16 +3,17 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 # Avoid multiple tests running on the same reference
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
+  verible-lint:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: chipsalliance/verible-linter-action@main
@@ -23,4 +24,34 @@ jobs:
           exclude_paths:
             ./library/analog_devices_hdl
           github_token: ${{ secrets.GITHUB_TOKEN }}
+  verilator-lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone yosys repo for simulation sources
+        uses: actions/checkout@v4
+        with:
+          repository: YosysHQ/yosys
+          path: ./yosys
+          ref: main
+          sparse-checkout: techlibs/xilinx/cells_sim.v
+
+      - name: Copy cells_sim.v to /usr/share/yosys/xilinx/
+        run: |
+          sudo mkdir -p /usr/share/yosys/xilinx
+          sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
+
+      - name: Install verilator
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install verilator
+
+      - name: Run lint
+        run: |
+          verilator config.vlt \
+          library/spi/axis_exp_adc_tb.sv \
+          /usr/share/yosys/xilinx/cells_sim.v \
+          --lint-only \
+          -y library/spi \
+          --timing
 
