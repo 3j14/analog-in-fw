@@ -55,6 +55,5 @@ jobs:
           $files \
           /usr/share/yosys/xilinx/cells_sim.v \
           --lint-only \
-          -y library/spi \
           --timing
 
