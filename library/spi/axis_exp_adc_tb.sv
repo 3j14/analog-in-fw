@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 
+
 module exp_adc_impl #(
     parameter integer CNV_TIME = 282
 ) (
@@ -31,29 +32,9 @@ module exp_adc_impl #(
 
     reg [5:0] data_idx = 0;
 
-    always @(posedge cnv or negedge resetn) begin
-        if (!resetn) begin
-            data_ready <= 0;
-        end else if (cnv) begin
-            busy <= 1;
-            data_ready <= #(CNV_TIME) 1;
-            busy <= #(CNV_TIME) 0;
-        end
-    end
-
-    always @(posedge data_ready) begin
-        data_idx <= 32;
-    end
-
-    always @(posedge sck or negedge resetn) begin
-        if (!resetn) begin
-            device_mode <= Conversion;
+    always @(posedge sck or negedge resetn or negedge csn) begin
+        if (!resetn || (!csn && !sck)) begin
             reg_command <= 0;
-            data_idx <= 0;
-            data_ready <= 0;
-            busy <= 0;
-            sdo <= 0;
-            lane_md <= LaneModeOne;
         end else if (!csn) begin
             reg_command <= {reg_command[22:0], sdi};
         end
@@ -64,8 +45,11 @@ module exp_adc_impl #(
     // and enable RegAccess mode.
     // If already in RegAccess mode, write registers or exit if exit
     // command received.
-    always @(posedge csn) begin
-        if (resetn) begin
+    always @(posedge csn or negedge resetn) begin
+        if (!resetn) begin
+            device_mode <= Conversion;
+            lane_md <= LaneModeOne;
+        end else begin
             if (reg_command[23:21] == 3'b101) begin
                 device_mode <= RegAccess;
             end else if (device_mode == RegAccess) begin
@@ -80,12 +64,18 @@ module exp_adc_impl #(
         end
     end
 
-    always @(negedge csn) begin
-        reg_command <= 0;
-    end
-
-    always @(posedge sck or negedge csn) begin
-        if (device_mode == Conversion && resetn && !csn && data_ready) begin
+    always @(posedge sck or negedge csn or posedge cnv or negedge resetn) begin
+        if (!resetn) begin
+            data_ready <= 0;
+            data_idx <= 0;
+            busy <= 0;
+            sdo <= 0;
+        end else if (cnv) begin
+            busy <= 1;
+            data_ready <= #(CNV_TIME) 1;
+            busy <= #(CNV_TIME) 0;
+            data_idx <= 32;
+        end else if (device_mode == Conversion && !csn && data_ready) begin
             if (data_idx == 0) begin
                 data_ready <= 0;
             end else begin
@@ -207,11 +197,11 @@ module axis_exp_adc_tb #(
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
-        m_axis_tdata <= {8'b0, 1'b1, 15'h0020, 2'b10, 6'b0};
+        m_axis_tdata = {8'b0, 1'b1, 15'h0020, 2'b10, 6'b0};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
-        m_axis_tdata <= {8'b0, 1'b1, 15'h0014, 8'b00000001};
+        m_axis_tdata = {8'b0, 1'b1, 15'h0014, 8'b00000001};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
@@ -221,8 +211,8 @@ module axis_exp_adc_tb #(
         else $error("Register received does not match");
 
         #(4 * Period);
-        @(posedge clk) cnv_clk_en <= 1;
-        @(posedge clk) s_axis_tready <= 1;
+        @(posedge clk) cnv_clk_en = 1;
+        @(posedge clk) s_axis_tready = 1;
 
         @(negedge s_axis_tvalid)
         assert (axis_data_received == test_pattern) $display("Test pattern received from ADC");
