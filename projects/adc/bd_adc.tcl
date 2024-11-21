@@ -41,8 +41,6 @@ set_property -dict [list \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ $ref_clk_freq \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $spi_clk_freq \
-    CONFIG.CLKOUT3_USED {true} \
-    CONFIG.CLKOUT3_REQUESTED_OUT_FREQ $sampling_rate \
     CONFIG.USE_RESET {false} \
     CONFIG.USE_LOCKED {true}
 ] [get_bd_cells clk_wiz_0]
