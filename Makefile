@@ -23,6 +23,9 @@ _PD_FILES := $(wildcard $(_RED_PITAYA_NOTES_DIR)/cores/*.v)
 _PD_CORES := $(basename $(notdir $(_PD_FILES)))
 _PD_CORES_BUILD_DIRS := $(addprefix $(_RED_PITAYA_NOTES_DIR)/tmp/cores/, $(_PD_CORES))
 
+HDL_FILES := $(shell find library \( -path $(_RED_PITAYA_NOTES_DIR) -o -path $(_ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
+HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
+
 # Overwrite Analog Devices' Vivado version check
 REQUIRED_VIVADO_VERSION ?= 2024.1.2
 export REQUIRED_VIVADO_VERSION
@@ -59,4 +62,12 @@ $(_ADI_HDL_CLEAN):
 
 $(_PD_CORES_BUILD_DIRS): $(_PD_FILES)
 	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/cores/$(notdir $@)
+
+.PHONY: verilator-lint
+verilator-lint: $(HDL_FILES)
+	verilator config.vlt $(HDL_FILES) /usr/share/yosys/xilinx/cells_sim.v --lint-only --timing
+
+.PHONY: verible-lint
+verible-ling: $(HDL_FILES)
+	verible-verilog-lint $(HDL_FILES)
 

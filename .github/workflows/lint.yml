@@ -15,15 +15,14 @@ jobs:
   verible-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: 3j14/verible-actions-common/install-verible@optional-github-token
-      - name: Run verible-verilog-lint on 'library'
+      - uses: actions/checkout@v4 
+      - name: Install make
         run: |
-          files=$(find library \( -path library/red-pitaya-notes -o -path library/adi-hdl \) -prune -false -o -name \*.v -o -name \*.sv)
-          echo "Files:"
-          echo $files
-          verible-verilog-lint $files
-
+          sudo apt-get update
+          sudo apt-get -y install make
+      - uses: 3j14/verible-actions-common/install-verible@optional-github-token
+      - name: Run verible-verilog-lint
+        run: make verible-lint 
   verilator-lint:
     runs-on: ubuntu-24.04
     steps:
@@ -41,19 +40,11 @@ jobs:
           sudo mkdir -p /usr/share/yosys/xilinx
           sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
 
-      - name: Install verilator
+      - name: Install verilator and make
         run: |
           sudo apt-get update
-          sudo apt-get -y install verilator
+          sudo apt-get -y install verilator make
 
-      - name: Run lint
-        run: |
-          files=$(find library \( -path library/red-pitaya-notes -o -path library/adi-hdl \) -prune -false -o -name \*.v -o -name \*.sv)
-          echo "Files:"
-          echo $files
-          verilator config.vlt \
-          $files \
-          /usr/share/yosys/xilinx/cells_sim.v \
-          --lint-only \
-          --timing
+      - name: Run verilator lint
+        run: make verilator-lint
 
