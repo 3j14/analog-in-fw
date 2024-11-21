@@ -83,10 +83,10 @@ module axis_exp_adc #(
             m_axis_tvalid <= 0;
             if (device_mode == Conversion) begin
                 m_axis_tvalid <= 0;
-                data_idx <= IdxDataSize'(MaxIdxCnv);
+                data_idx <= MaxIdxCnv[IdxDataSize-1:0];
                 cnv_data <= 0;
             end else if (reg_available) begin
-                data_idx <= IdxDataSize'(MaxIdxReg);
+                data_idx <= MaxIdxReg[IdxDataSize-1:0];
                 spi_sdo <= reg_data[MaxIdxReg-1];
                 reg_available <= 0;
             end
