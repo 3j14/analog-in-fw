@@ -154,8 +154,7 @@ module axis_exp_adc_tb #(
     );
 
     axis_exp_adc #(
-        .NUM_SDI(NUM_SDI),
-        .DATA_WIDTH(DATA_WIDTH)
+        .NUM_SDI(NUM_SDI)
     ) dut (
         .aclk(clk),
         .aresetn(aresetn),
