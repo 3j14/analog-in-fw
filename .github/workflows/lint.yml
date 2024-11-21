@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: 3j14/verible-actions-common/install-verible@optional-github-token
-      - name: Run verible--verilog-lint
+      - name: Run verible-verilog-lint on 'library'
         run: |
-          files = $(find library \( -path library/red-pitaya-notes -o -path library/analog_devices_hdl \) -prune -false -o name \*.v -o name \*.sv)
+          files=$(find library \( -path library/red-pitaya-notes -o -path library/analog_devices_hdl \) -prune -false -o name \*.v -o name \*.sv)
           echo "Files:"
           echo $files
           verible-actions-common $files
