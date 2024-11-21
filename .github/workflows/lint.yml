@@ -48,8 +48,11 @@ jobs:
 
       - name: Run lint
         run: |
+          files=$(find library \( -path library/red-pitaya-notes -o -path library/analog_devices_hdl \) -prune -false -o -name \*.v -o -name \*.sv)
+          echo "Files:"
+          echo $files
           verilator config.vlt \
-          library/spi/axis_exp_adc_tb.sv \
+          $files \
           /usr/share/yosys/xilinx/cells_sim.v \
           --lint-only \
           -y library/spi \
