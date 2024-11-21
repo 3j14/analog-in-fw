@@ -41,23 +41,134 @@ set_property -dict [list \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ $ref_clk_freq \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $spi_clk_freq \
+    CONFIG.CLKOUT3_USED {true} \
+    CONFIG.CLKOUT3_REQUESTED_OUT_FREQ $sampling_rate \
     CONFIG.USE_RESET {false} \
     CONFIG.USE_LOCKED {true}
 ] [get_bd_cells clk_wiz_0]
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset reset
 
+# Processing system
+create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps
+set_property -dict [list \
+    CONFIG.PCW_IMPORT_BOARD_PRESET "library/pavel-red-pitaya-notes/cfg/red_pitaya.xml" \
+    CONFIG.PCW_USE_S_AXI_ACP {1} \
+    CONFIG.PCW_USE_DEFAULT_ACP_USER_VAL {1}
+] [get_bd_cells ps]
+apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {
+make_external {FIXED_IO, DDR}
+    Master "Disable"
+    Slave "Disable"
+} [get_bd_cells ps]
+
 # ADC
 create_bd_cell -type module -reference axis_exp_adc adc
+
+# AXIS clock converters
+# axis_exp_adc uses the SPI clock as its AXI clock source,
+# which is slower than the main AXI bus clock. A clock converter can
+# be used to cross the clocking domains in and out of the ADC SPI.
+create_bd_cell -type ip -vlnv xilinx.com:ip:axis_clock_converter:1.1 clk_converter_in
+create_bd_cell -type ip -vlnv xilinx.com:ip:axis_clock_converter:1.1 clk_converter_out
+set_property CONFIG.IS_ACLK_ASYNC.VALUE_SRC USER [get_bd_cells clk_converter_in]
+set_property CONFIG.IS_ACLK_ASYNC {0} [get_bd_cells clk_converter_in]
+set_property CONFIG.IS_ACLK_ASYNC.VALUE_SRC USER [get_bd_cells clk_converter_out]
+set_property CONFIG.IS_ACLK_ASYNC {0} [get_bd_cells clk_converter_out]
+
+# AXI Hub
+create_bd_cell -type ip -vlnv pavel-demin:user:axi_hub:1.0 hub
+set_property CONFIG.CFG_DATA_WIDTH {96} [get_bd_cells hub]
+set_property CONFIG.STS_DATA_WIDTH {32} [get_bd_cells hub]
+
+# Config registers
+create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_adc
+set_property CONFIG.DIN_FROM {0} [get_bd_cells reset_adc]
+set_property CONFIG.DIN_TO {0} [get_bd_cells reset_adc]
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_adc]
+
+create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_packetizer
+set_property CONFIG.DIN_FROM {1} [get_bd_cells reset_packetizer]
+set_property CONFIG.DIN_TO {1} [get_bd_cells reset_packetizer]
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_packetizer]
+
+create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 cfg_packetizer
+set_property CONFIG.DIN_FROM {95} [get_bd_cells cfg_packetizer]
+set_property CONFIG.DIN_TO {64} [get_bd_cells cfg_packetizer]
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells cfg_packetizer]
+
+create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_dma
+set_property CONFIG.DIN_FROM {2} [get_bd_cells reset_dma]
+set_property CONFIG.DIN_TO {2} [get_bd_cells reset_dma]
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_dma]
+
+create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 addr_dma
+set_property CONFIG.DIN_FROM {63} [get_bd_cells addr_dma]
+set_property CONFIG.DIN_TO {32} [get_bd_cells addr_dma]
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells addr_dma]
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant cfg_dma
+set_property CONFIG.CONST_WIDTH {18} [get_bd_cells cfg_dma]
+set_property CONFIG.CONST_VAL {262143} [get_bd_cells cfg_dma]
+
+# AXIS packetizer & DMA
+create_bd_cell -type ip -vlnv pavel-demin:user:axis_packetizer:1.0 packetizer
+create_bd_cell -type ip -vlnv pavel-demin:user:axis_ram_writer:1.0 dma
 
 # Connections
 set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
 set spi_clk [get_bd_pins clk_wiz_0/clk_out2]
+set aresetn [get_bd_pins reset/peripheral_aresetn]
+set cfg_data [get_bd_pins hub/cfg_data]
 # Clocks
 connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
 connect_bd_net [get_bd_ports adc_clk_n_i] [get_bd_pins clk_wiz_0/clk_in1_n]
+# Reset
+connect_bd_net $spi_clk [get_bd_pins reset/slowest_sync_clk]
+connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins reset/ext_reset_in]
+connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins reset/dcm_locked]
+# Processing System
+connect_bd_net $ref_clk [get_bd_pins ps/M_AXI_GP0_ACLK]
+connect_bd_net $ref_clk [get_bd_pins ps/S_AXI_ACP_ACLK]
+# ADC
 connect_bd_net $spi_clk [get_bd_pins adc/aclk]
 connect_bd_net [get_bd_pins adc/spi_sck] [get_bd_ports exp_adc_sck]
 connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc/spi_csn]
 connect_bd_net [get_bd_pins adc/spi_sdi] [get_bd_ports exp_adc_sdi]
+connect_bd_net [get_bd_pins adc/spi_sdo] [get_bd_ports exp_adc_sdo]
+connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_ports exp_adc_resetn]
+# AXIS clock converters
+connect_bd_intf_net [get_bd_intf_pins clk_converter_in/M_AXIS] [get_bd_intf_pins adc/s_axis]
+connect_bd_intf_net [get_bd_intf_pins adc/m_axis] [get_bd_intf_pins clk_converter_out/S_AXIS]
+connect_bd_net $spi_clk [get_bd_pins clk_converter_in/m_axis_aclk]
+connect_bd_net $spi_clk [get_bd_pins clk_converter_out/s_axis_aclk]
+connect_bd_net $ref_clk [get_bd_pins clk_converter_in/s_axis_aclk]
+connect_bd_net $ref_clk [get_bd_pins clk_converter_out/m_axis_aclk]
+connect_bd_net $aresetn [get_bd_pins clk_converter_in/m_axis_aresetn]
+connect_bd_net $aresetn [get_bd_pins clk_converter_in/s_axis_aresetn]
+connect_bd_net $aresetn [get_bd_pins clk_converter_out/m_axis_aresetn]
+connect_bd_net $aresetn [get_bd_pins clk_converter_out/s_axis_aresetn]
+# AXIS packetizer and DMA
+connect_bd_intf_net [get_bd_intf_pins clk_converter_out/M_AXIS] [get_bd_intf_pins packetizer/s_axis]
+connect_bd_intf_net [get_bd_intf_pins packetizer/m_axis] [get_bd_intf_pins dma/s_axis]
+connect_bd_intf_net [get_bd_intf_pins dma/m_axi] [get_bd_intf_pins ps/S_AXI_ACP]
+connect_bd_net $ref_clk [get_bd_pins dma/aclk]
+connect_bd_net $ref_clk [get_bd_pins packetizer/aclk]
+# Hub
+connect_bd_intf_net [get_bd_intf_pins ps/M_AXI_GP0] [get_bd_intf_pins hub/s_axi]
+connect_bd_intf_net [get_bd_intf_pins hub/m00_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
+connect_bd_net $ref_clk [get_bd_pins hub/aclk]
+connect_bd_net $aresetn [get_bd_pins hub/aresetn]
+# Registers
+connect_bd_net $cfg_data [get_bd_pins reset_adc/din]
+connect_bd_net $cfg_data [get_bd_pins addr_dma/din]
+connect_bd_net $cfg_data [get_bd_pins reset_dma/din]
+connect_bd_net $cfg_data [get_bd_pins reset_packetizer/din]
+connect_bd_net $cfg_data [get_bd_pins cfg_packetizer/din]
+connect_bd_net [get_bd_pins reset_adc/dout] [get_bd_pins adc/aresetn]
+connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]
+connect_bd_net [get_bd_pins addr_dma/dout] [get_bd_pins dma/min_addr]
+connect_bd_net [get_bd_pins reset_dma/dout] [get_bd_pins dma/aresetn]
+connect_bd_net [get_bd_pins reset_packetizer/dout] [get_bd_pins packetizer/aresetn]
+connect_bd_net [get_bd_pins cfg_packetizer/dout] [get_bd_pins packetizer/cfg_data]
 
 regenerate_bd_layout
