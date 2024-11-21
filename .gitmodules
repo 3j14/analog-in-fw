@@ -1,5 +1,5 @@
 [submodule "library/analog_devices_hdl"]
-	path = library/analog_devices_hdl
+	path = library/adi-hdl
 	url = git@github.com:analogdevicesinc/hdl.git
 [submodule "library/pavel-red-pitaya-notes"]
 	path = library/red-pitaya-notes

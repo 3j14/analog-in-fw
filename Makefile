@@ -10,9 +10,10 @@ VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
 # Targets for Analog Devices' SPI Engine
-_ADI_HDL_IPS := $(dir $(shell find library/analog_devices_hdl/library/spi_engine -name Makefile))
-_ADI_HDL_IPS += $(dir $(shell find library/analog_devices_hdl/library/axi_pwm_gen -name Makefile))
-_ADI_HDL_IPS += $(dir $(shell find library/analog_devices_hdl/library/ad463x_data_capture -name Makefile))
+_ADI_HDL_DIR := library/adi-hdl
+_ADI_HDL_IPS := $(dir $(shell find $(_ADI_HDL_DIR)/library/spi_engine -name Makefile))
+_ADI_HDL_IPS += $(dir $(shell find $(_ADI_HDL_DIR)/library/axi_pwm_gen -name Makefile))
+_ADI_HDL_IPS += $(dir $(shell find $(_ADI_HDL_DIR)/library/ad463x_data_capture -name Makefile))
 _ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
 _ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
 
