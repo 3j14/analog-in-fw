@@ -14,16 +14,15 @@ module axis_exp_adc #(
     output wire spi_sck,
     output wire spi_resetn,
     // AXI Stream input (register access mode)
-    input wire [DataWidth-1:0] s_axis_tdata,
+    input wire [32-1:0] s_axis_tdata,
     input wire s_axis_tvalid,
     output wire s_axis_tready,
     // AXI Stream output (conversion data)
-    output wire [DataWidth-1:0] m_axis_tdata,
+    output wire [32-1:0] m_axis_tdata,
     output reg m_axis_tvalid = 0,
     input wire m_axis_tready
 );
     localparam integer DataWidth = 32;
-
     assign spi_resetn = aresetn;
 
     // Internal register holding the data that came from the ADC
@@ -90,6 +89,9 @@ module axis_exp_adc #(
                 data_idx <= MaxIdxCnv[IdxDataSize-1:0];
                 cnv_data <= 0;
             end else if (reg_available) begin
+                transaction_active <= 1;
+                spi_sck_enable <= 1;
+                spi_sdo <= 0;
                 data_idx <= MaxIdxReg[IdxDataSize-1:0];
                 spi_sdo <= reg_data[MaxIdxReg-1];
                 reg_available <= 0;
