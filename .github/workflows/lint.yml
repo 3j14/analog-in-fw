@@ -16,14 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: chipsalliance/verible-linter-action@main
-        with:
-          paths:
-            ./library
-            ./projects
-          exclude_paths:
-            ./library/analog_devices_hdl
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: 3j14/verible-actions-common/install-verible@optional-github-token
+      - name: Run verible--verilog-lint
+        run: |
+          files = $(find library \( -path library/red-pitaya-notes -o -path library/analog_devices_hdl \) -prune -false -o name \*.v -o name \*.sv)
+          echo "Files:"
+          echo $files
+          verible-actions-common $files
+
   verilator-lint:
     runs-on: ubuntu-24.04
     steps:
