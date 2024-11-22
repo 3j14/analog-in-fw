@@ -20,7 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install make
-      - uses: 3j14/verible-actions-common/install-verible@optional-github-token
+      - uses: 3j14/verible-actions-common/install-verible@bash-array-syntax
       - name: Run verible-verilog-lint
         run: make verible-lint 
   verilator-lint:
