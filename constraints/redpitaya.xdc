@@ -5,17 +5,17 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2014-present Pavel Demin
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
 # the Software without restriction, including without limitation the rights to
 # use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
 # the Software, and to permit persons to whom the Software is furnished to do so,
 # subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 # FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -133,8 +133,16 @@ set_property PACKAGE_PIN J14 [get_ports {led_o[7]}]
 # GPIO connector. With the 24-bit ADC expansion board, the pins are
 # re-purposed for use with the AD4030-24 SPI bus.
 set_property IOSTANDARD LVCMOS33 [get_ports exp_adc_*]
-set_property SLEW FAST [get_ports exp_adc_*]
-set_property DRIVE 8 [get_ports exp_adc_*]
+set_property SLEW FAST [get_ports exp_adc_cnv]
+set_property SLEW FAST [get_ports exp_adc_csn]
+set_property SLEW FAST [get_ports exp_adc_resetn]
+set_property SLEW FAST [get_ports exp_adc_sck]
+set_property SLEW FAST [get_ports exp_adc_sdo]
+set_property DRIVE 8 [get_ports exp_adc_cnv]
+set_property DRIVE 8 [get_ports exp_adc_csn]
+set_property DRIVE 8 [get_ports exp_adc_resetn]
+set_property DRIVE 8 [get_ports exp_adc_sck]
+set_property DRIVE 8 [get_ports exp_adc_sdo]
 # SPI
 set_property PACKAGE_PIN G17 [get_ports exp_adc_csn]
 set_property PACKAGE_PIN G18 [get_ports exp_adc_resetn]
@@ -186,4 +194,5 @@ set_property PACKAGE_PIN P14 [get_ports {daisy_p_i[0]}]
 set_property PACKAGE_PIN R14 [get_ports {daisy_n_i[0]}]
 set_property PACKAGE_PIN N18 [get_ports {daisy_p_i[1]}]
 set_property PACKAGE_PIN P19 [get_ports {daisy_n_i[1]}]
+
 

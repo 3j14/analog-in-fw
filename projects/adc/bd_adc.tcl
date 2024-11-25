@@ -41,6 +41,7 @@ set_property -dict [list \
     CONFIG.CLKOUT1_REQUESTED_OUT_FREQ $ref_clk_freq \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $spi_clk_freq \
+    CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {25} \
     CONFIG.USE_RESET {false} \
     CONFIG.USE_LOCKED {true}
 ] [get_bd_cells clk_wiz_0]
@@ -110,7 +111,14 @@ set_property CONFIG.CONST_VAL {262143} [get_bd_cells cfg_dma]
 
 # AXIS packetizer & DMA
 create_bd_cell -type ip -vlnv pavel-demin:user:axis_packetizer:1.0 packetizer
+set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells packetizer]
+set_property CONFIG.CNTR_WIDTH {32} [get_bd_cells packetizer]
+set_property CONFIG.CONTINUOUS {false} [get_bd_cells packetizer]
 create_bd_cell -type ip -vlnv pavel-demin:user:axis_ram_writer:1.0 dma
+set_property CONFIG.ADDR_WIDTH {18} [get_bd_cells dma]
+set_property CONFIG.AXI_ID_WIDTH {3} [get_bd_cells dma]
+set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells dma]
+set_property CONFIG.FIFO_WRITE_DEPTH {1024} [get_bd_cells dma]
 
 # Connections
 set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
@@ -122,6 +130,7 @@ connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
 connect_bd_net [get_bd_ports adc_clk_n_i] [get_bd_pins clk_wiz_0/clk_in1_n]
 # Reset
 connect_bd_net $spi_clk [get_bd_pins reset/slowest_sync_clk]
+set_property name spi_clk [get_bd_nets -of $spi_clk]
 connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins reset/ext_reset_in]
 connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins reset/dcm_locked]
 # Processing System
