@@ -1,7 +1,7 @@
 # This is taken care of by the
 # create_clock -period 8.000 -name adc_clk [get_ports adc_clk_p_i]
 
-create_clock -period 20.000 -name spi_clk -waveform {0.000 5.000} [get_nets bd_adc_i/clk_wiz_0_clk_out2]
+create_clock -period 20.000 -name spi_clk -waveform {0.000 5.000} [get_nets -hierarchical spi_clk]
 
 # Proapagation delay derived from 
 #  - TXB0106 switching characteristics, 

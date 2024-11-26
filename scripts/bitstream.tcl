@@ -1,5 +1,7 @@
 set name [lindex $argv 0]
 open_project build/projects/$name/$name.xpr
 
-launch_runs impl_1 -to_step write_bitstream
-wait_on_run impl_1
+open_run impl_1
+set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+write_bitstream -force -file build/projects/$name/$name.bit
+

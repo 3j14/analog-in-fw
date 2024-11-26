@@ -4,7 +4,10 @@ SHELL=/bin/bash
 
 PROJECT ?= blink
 PART ?= xc7z010clg400-1
+PROCESSOR ?= ps7_cortexa9_0
 VIVADO = vivado
+XSCT = xsct
+VITIS = vitis
 VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
@@ -27,7 +30,7 @@ HDL_FILES := $(shell find library \( -path $(_RED_PITAYA_NOTES_DIR) -o -path $(_
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
 
 # Overwrite Analog Devices' Vivado version check
-REQUIRED_VIVADO_VERSION ?= 2024.1.2
+REQUIRED_VIVADO_VERSION ?= 2024.2
 export REQUIRED_VIVADO_VERSION
 
 SOURCES := $(wildcard ./library/*/*.v)
@@ -40,19 +43,69 @@ SOURCES += $(wildcard ./contraints/*.tcl)
 ifeq ($(PROJECT), spitest)
 SOURCES += $(_ADI_HDL_ALL)
 endif
-ifeq ($(PROJECT), spi)
+ifeq ($(PROJECT), adc)
 SOURCES += $(_PD_CORES_BUILD_DIRS)
 endif
 
+BUILD_DIR = build/projects/$(PROJECT)
 PROJECTS = $(notdir $(wildcard ./projects/*))
 
-build/projects/$(PROJECT)/$(PROJECT).xpr: $(SOURCES)
+.PHONY: fsbl xsa bitstream impl project clean
+dtb: $(BUILD_DIR)/rootfs.dtb $(BUILD_DIR)/initrd.dtb
+fsbl: $(BUILD_DIR)/fsbl/fsbl.elf
+xsa: $(BUILD_DIR)/$(PROJECT).xsa
+bitstream: $(BUILD_DIR)/$(PROJECT).bit
+impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
+project: $(BUILD_DIR)/$(PROJECT).xpr
+clean: $(_ADI_HDL_CLEAN)
+	rm -rf $(_RED_PITAYA_NOTES_DIR)/tmp
+	rm -rf build
+
+$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RED_PITAYA_NOTES_DIR)/dts
+	dtc -I dts -O dtb -o $@ \
+		-i $(BUILD_DIR)/dts \
+		-i $(BUILD_DIR)/fsbl/hw/sdt \
+		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
+		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
+		-i $(_RED_PITAYA_NOTES_DIR)/dts \
+		$(_RED_PITAYA_NOTES_DIR)/dts/rootfs.dts
+
+$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RED_PITAYA_NOTES_DIR)/dts
+	dtc -I dts -O dtb -o $@ \
+		-i $(BUILD_DIR)/dts \
+		-i $(BUILD_DIR)/fsbl/hw/sdt \
+		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
+		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
+		-i $(_RED_PITAYA_NOTES_DIR)/dts \
+		$(_RED_PITAYA_NOTES_DIR)/dts/initrd.dts
+
+$(BUILD_DIR)/dts/system-top.dts: $(BUILD_DIR)/fsbl/hw/sdt/system-top.dts
+	mkdir -p $(@D)
+	cp $< $@
+	sed -i 's|#include|/include/|' $@
+
+$(BUILD_DIR)/fsbl/hw/sdt/system-top.dts: $(BUILD_DIR)/fsbl
+
+$(BUILD_DIR)/fsbl/fsbl.elf: $(BUILD_DIR)/fsbl
+	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
+	cp $</zynq_fsbl/build/fsbl.elf $@
+
+$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa
+	$(VITIS) --source scripts/fsbl.py create $(PROJECT)
+
+$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
+	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
+
+$(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).xpr
+	$(VIVADO) $(VIVADO_ARGS) -source scripts/bitstream.tcl -tclargs $(PROJECT)
+
+$(BUILD_DIR)/$(PROJECT).runs/impl_1: $(BUILD_DIR)/$(PROJECT).xpr
+	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
+
+$(BUILD_DIR)/$(PROJECT).xpr: $(SOURCES)
 	mkdir -p $(@D)
 	# Run the project script
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
-
-build/projects/$(PROJECT)/$(PROJECT).runs/impl_1: build/projects/$(PROJECT)/$(PROJECT).xpr
-	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
 
 $(_ADI_HDL_ALL):
 	$(MAKE) -C $(@D) all
@@ -62,6 +115,12 @@ $(_ADI_HDL_CLEAN):
 
 $(_PD_CORES_BUILD_DIRS): $(_PD_FILES)
 	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/cores/$(notdir $@)
+
+$(_RED_PITAYA_NOTES_DIR)/tmp/ssbl.elf:
+	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/ssbl.elf
+
+$(_RED_PITAYA_NOTES_DIR)/zImage.bin:
+	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) $(@F)
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
