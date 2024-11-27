@@ -21,12 +21,12 @@ _ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
 _ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
 
 # Targets for Pavel Demin's Red Pitaya Notes
-_RED_PITAYA_NOTES_DIR := library/red-pitaya-notes
-_PD_FILES := $(wildcard $(_RED_PITAYA_NOTES_DIR)/cores/*.v)
+_RPN_DIR := library/red-pitaya-notes
+_PD_FILES := $(wildcard $(_RPN_DIR)/cores/*.v)
 _PD_CORES := $(basename $(notdir $(_PD_FILES)))
-_PD_CORES_BUILD_DIRS := $(addprefix $(_RED_PITAYA_NOTES_DIR)/tmp/cores/, $(_PD_CORES))
+_PD_CORES_BUILD_DIRS := $(addprefix $(_RPN_DIR)/tmp/cores/, $(_PD_CORES))
 
-HDL_FILES := $(shell find library \( -path $(_RED_PITAYA_NOTES_DIR) -o -path $(_ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
+HDL_FILES := $(shell find library \( -path $(_RPN_DIR) -o -path $(_ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
 
 # Overwrite Analog Devices' Vivado version check
@@ -58,26 +58,26 @@ bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 project: $(BUILD_DIR)/$(PROJECT).xpr
 clean: $(_ADI_HDL_CLEAN)
-	rm -rf $(_RED_PITAYA_NOTES_DIR)/tmp
+	rm -rf $(_RPN_DIR)/tmp
 	rm -rf build
 
-$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RED_PITAYA_NOTES_DIR)/dts
+$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
 		-i $(BUILD_DIR)/dts \
 		-i $(BUILD_DIR)/fsbl/hw/sdt \
 		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
 		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
-		-i $(_RED_PITAYA_NOTES_DIR)/dts \
-		$(_RED_PITAYA_NOTES_DIR)/dts/rootfs.dts
+		-i $(_RPN_DIR)/dts \
+		$(_RPN_DIR)/dts/rootfs.dts
 
-$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RED_PITAYA_NOTES_DIR)/dts
+$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
 		-i $(BUILD_DIR)/dts \
 		-i $(BUILD_DIR)/fsbl/hw/sdt \
 		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
 		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
-		-i $(_RED_PITAYA_NOTES_DIR)/dts \
-		$(_RED_PITAYA_NOTES_DIR)/dts/initrd.dts
+		-i $(_RPN_DIR)/dts \
+		$(_RPN_DIR)/dts/initrd.dts
 
 $(BUILD_DIR)/dts/system-top.dts: $(BUILD_DIR)/fsbl/hw/sdt/system-top.dts
 	mkdir -p $(@D)
@@ -90,10 +90,10 @@ $(BUILD_DIR)/fsbl/fsbl.elf: $(BUILD_DIR)/fsbl
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
 	cp $</zynq_fsbl/build/fsbl.elf $@
 
-$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(_RED_PITAYA_NOTES_DIR)/patches/red_pitaya_fsbl_hooks.c $(_RED_PITAYA_NOTES_DIR)/patches/fsbl.patch
+$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(_RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(_RPN_DIR)/patches/fsbl.patch
 	$(VITIS) --source scripts/fsbl.py create $(PROJECT)
-	cp $(_RED_PITAYA_NOTES_DIR)/patches/red_pitaya_fsbl_hooks.c $@/zynq_fsbl
-	patch $@/zynq_fsbl/fsbl_hooks.c $(_RED_PITAYA_NOTES_DIR)/patches/fsbl.patch
+	cp $(_RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $@/zynq_fsbl
+	patch $@/zynq_fsbl/fsbl_hooks.c $(_RPN_DIR)/patches/fsbl.patch
 	sed -i 's\XPAR_PS7_ETHERNET_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
 	sed -i 's\XPAR_PS7_I2C_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
 	sed -i '/fsbl_hooks.c)/a collect (PROJECT_LIB_SOURCES red_pitaya_fsbl_hooks.c)' $@/zynq_fsbl/CMakeLists.txt
@@ -119,13 +119,13 @@ $(_ADI_HDL_CLEAN):
 	$(MAKE) -C $(@D) clean
 
 $(_PD_CORES_BUILD_DIRS): $(_PD_FILES)
-	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/cores/$(notdir $@)
+	$(MAKE) -C $(_RPN_DIR) tmp/cores/$(notdir $@)
 
-$(_RED_PITAYA_NOTES_DIR)/tmp/ssbl.elf:
-	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) tmp/ssbl.elf
+$(_RPN_DIR)/tmp/ssbl.elf:
+	$(MAKE) -C $(_RPN_DIR) tmp/ssbl.elf
 
-$(_RED_PITAYA_NOTES_DIR)/zImage.bin:
-	$(MAKE) -C $(_RED_PITAYA_NOTES_DIR) $(@F)
+$(_RPN_DIR)/zImage.bin:
+	$(MAKE) -C $(_RPN_DIR) $(@F)
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
