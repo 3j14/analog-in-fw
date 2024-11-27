@@ -66,7 +66,7 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset reset_spi
 # Processing system
 create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps
 set_property -dict [list \
-    CONFIG.PCW_IMPORT_BOARD_PRESET "library/pavel-red-pitaya-notes/cfg/red_pitaya.xml" \
+    CONFIG.PCW_IMPORT_BOARD_PRESET "library/red-pitaya-notes/cfg/red_pitaya.xml" \
     CONFIG.PCW_USE_S_AXI_ACP {1} \
     CONFIG.PCW_USE_DEFAULT_ACP_USER_VAL {1}
 ] [get_bd_cells ps]
