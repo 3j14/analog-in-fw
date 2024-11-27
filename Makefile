@@ -90,8 +90,13 @@ $(BUILD_DIR)/fsbl/fsbl.elf: $(BUILD_DIR)/fsbl
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
 	cp $</zynq_fsbl/build/fsbl.elf $@
 
-$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa
+$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(_RED_PITAYA_NOTES_DIR)/patches/red_pitaya_fsbl_hooks.c $(_RED_PITAYA_NOTES_DIR)/patches/fsbl.patch
 	$(VITIS) --source scripts/fsbl.py create $(PROJECT)
+	cp $(_RED_PITAYA_NOTES_DIR)/patches/red_pitaya_fsbl_hooks.c $@/zynq_fsbl
+	patch $@/zynq_fsbl/fsbl_hooks.c $(_RED_PITAYA_NOTES_DIR)/patches/fsbl.patch
+	sed -i 's\XPAR_PS7_ETHERNET_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
+	sed -i 's\XPAR_PS7_I2C_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
+	sed -i '/fsbl_hooks.c)/a collect (PROJECT_LIB_SOURCES red_pitaya_fsbl_hooks.c)' $@/zynq_fsbl/CMakeLists.txt
 
 $(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
