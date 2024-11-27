@@ -50,9 +50,27 @@ endif
 BUILD_DIR = build/projects/$(PROJECT)
 PROJECTS = $(notdir $(wildcard ./projects/*))
 
+define bootbif
+img:
+{
+	[bootloader] $(BUILD_DIR)/fsbl/fsbl.elf $(_RPN_DIR)/tmp/ssbl.elf
+	[load=0x2000000] $(BUILD_DIR)/initrd.dtb
+	[load=0x2008000] $(_RPN_DIR)/zImage.bin
+	[load=0x3000000] $(BUILD_DIR)/initrd.dtb
+}
+endef
+define boot-rootfsbif
+img:
+{
+	[bootloader] $(BUILD_DIR)/fsbl/fsbl.elf $(_RPN_DIR)/tmp/ssbl.elf
+	[load=0x2000000] $(BUILD_DIR)/rootfs.dtb
+	[load=0x2008000] $(_RPN_DIR)/zImage.bin
+}
+endef
 .PHONY: fsbl xsa bitstream impl project clean
 dtb: $(BUILD_DIR)/rootfs.dtb $(BUILD_DIR)/initrd.dtb
 fsbl: $(BUILD_DIR)/fsbl/fsbl.elf
+ssbl: $(_RPN_DIR)/tmp/ssbl.elf
 xsa: $(BUILD_DIR)/$(PROJECT).xsa
 bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
@@ -60,6 +78,14 @@ project: $(BUILD_DIR)/$(PROJECT).xpr
 clean: $(_ADI_HDL_CLEAN)
 	rm -rf $(_RPN_DIR)/tmp
 	rm -rf build
+
+$(BUILD_DIR)/boot.bin: fsbl ssbl dtb
+	echo "$(bootbif)" > $(@D)/boot.bif
+	bootgen -image $(@D)/boot.bif -w -o $@
+
+$(BUILD_DIR)/boot-rootfs.bin: fsbl ssbl dtb
+	echo "$(boot-rootfsbif)" > $(@D)/boot-rootfs.bif
+	bootgen -image $(@D)/boot-rootfs.bif -w -o $@
 
 $(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
@@ -125,6 +151,9 @@ $(_RPN_DIR)/tmp/ssbl.elf:
 	$(MAKE) -C $(_RPN_DIR) tmp/ssbl.elf
 
 $(_RPN_DIR)/zImage.bin:
+	$(MAKE) -C $(_RPN_DIR) $(@F)
+
+$(_RPN_DIR)/initrd.bin:
 	$(MAKE) -C $(_RPN_DIR) $(@F)
 
 .PHONY: verilator-lint
