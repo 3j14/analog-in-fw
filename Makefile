@@ -12,6 +12,9 @@ VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
+DEVICE_TREE_VER := 2024.2
+DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
+
 # Targets for Analog Devices' SPI Engine
 _ADI_HDL_DIR := library/adi-hdl
 _ADI_HDL_IPS := $(dir $(shell find $(_ADI_HDL_DIR)/library/spi_engine -name Makefile))
@@ -87,23 +90,22 @@ $(BUILD_DIR)/boot-rootfs.bin: fsbl ssbl dtb
 	echo "$(boot-rootfsbif)" > $(@D)/boot-rootfs.bif
 	bootgen -image $(@D)/boot-rootfs.bif -w -o $@
 
-$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RPN_DIR)/dts
+$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/devicetree/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
-		-i $(BUILD_DIR)/dts \
-		-i $(BUILD_DIR)/fsbl/hw/sdt \
-		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
-		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
+		-i $(<D) \
 		-i $(_RPN_DIR)/dts \
 		$(_RPN_DIR)/dts/rootfs.dts
 
-$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/dts/system-top.dts $(_RPN_DIR)/dts
+$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/devicetree/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
-		-i $(BUILD_DIR)/dts \
-		-i $(BUILD_DIR)/fsbl/hw/sdt \
-		-i $(BUILD_DIR)/fsbl/hw/sdt/include \
-		-i $(BUILD_DIR)/fsbl/hw/sdt/include/dt-binding \
+		-i $(<D) \
 		-i $(_RPN_DIR)/dts \
 		$(_RPN_DIR)/dts/initrd.dts
+
+$(BUILD_DIR)/devicetree/system-top.dts: build/device-tree-xlnx $(BUILD_DIR)/$(PROJECT).xsa
+	mkdir -p $(@D)
+	$(XSCT) scripts/devicetree.tcl $(PROJECT) $(PROCESSOR) $(DEVICE_TREE_VER)
+	sed -i 's|#include|/include/|' $@
 
 $(BUILD_DIR)/dts/system-top.dts: $(BUILD_DIR)/fsbl/hw/sdt/system-top.dts
 	mkdir -p $(@D)
@@ -124,7 +126,11 @@ $(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(_RPN_DIR)/patches/red_pitaya_fs
 	sed -i 's\XPAR_PS7_I2C_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
 	sed -i '/fsbl_hooks.c)/a collect (PROJECT_LIB_SOURCES red_pitaya_fsbl_hooks.c)' $@/zynq_fsbl/CMakeLists.txt
 
-$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
+build/device-tree-xlnx:
+	mkdir -p $@
+	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xzv --strip-components 1 -C $@
+
+$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
 
 $(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).xpr
