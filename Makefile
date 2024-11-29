@@ -81,13 +81,7 @@ $(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/devicetree/system-top.dts $(_RPN_DIR)/dts
 	dtc -I dts -O dtb -o $@ \
 		-i $(<D) \
 		-i $(_RPN_DIR)/dts \
-		$(_RPN_DIR)/dts/rootfs.dts
-
-$(BUILD_DIR)/initrd.dtb: $(BUILD_DIR)/devicetree/system-top.dts $(_RPN_DIR)/dts
-	dtc -I dts -O dtb -o $@ \
-		-i $(<D) \
-		-i $(_RPN_DIR)/dts \
-		$(_RPN_DIR)/dts/initrd.dts
+		dts/rootfs.dts
 
 $(BUILD_DIR)/devicetree/system-top.dts: build/device-tree-xlnx $(BUILD_DIR)/$(PROJECT).xsa
 	mkdir -p $(@D)

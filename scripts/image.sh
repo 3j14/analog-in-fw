@@ -8,6 +8,9 @@
 #   - qemu-user-static-binfmt
 #       (or binfmt-support, qemu-user-binfmt on debian based)
 #   - resize2fs (optional)
+#
+# Generates the build/red-pitaya-debian-*.img file. This can be flashed
+# to an SD card using 'dd if=build/red-pitaya-*.img of=/dev/<sd-card-path> bs=4M'
 
 set -exo pipefail
 
@@ -17,7 +20,7 @@ DEBIAN_ARCH="armhf"
 LINUX_DIR="./library/red-pitaya-notes/tmp/linux-6.6"
 LINUX_VERSION="6.6.32-xilinx"
 IMAGE_FILE="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
-DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dnsmasq,dhcpcd-base"
+DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dnsmasq,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
 DEBIAN_HOSTNAME="redpitaya"
 
@@ -98,10 +101,11 @@ update-locale LANG=en_US.UTF-8
 
 systemctl enable dnsmasq
 systemctl enable nftables
+systemctl enable dhcpcd
 
 sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' etc/ssh/sshd_config
 
-echo root:"$PASSWORD" | chpasswd
+echo "root:$DEBIAN_PASSWORD" | chpasswd
 apt-get clean
 touch etc/hostname
 echo "$DEBIAN_HOSTNAME" > etc/hostname
@@ -117,6 +121,6 @@ sudo umount "$ROOT_DIR"
 sudo rm -rf -- "$ROOT_DIR"
 trap 'sudo losetup -d "$DEV"' EXIT
 
-if [[ command 'resize2fs' ]]; then
+if command -v 'resize2fs'; then
     sudo resize2fs -M "$ROOT_PART"
 fi
