@@ -1,144 +1,233 @@
+# Makefile for 'analog-in-fw'
+#
+# Build the FPGA projects, Linux, the device tree, bootloader, and
+# Debian based SD card image.
+#
+#
+# Usage:
+#	Specify the name of the project using the 'PROJECT' variable:
+#
+#		make PROJECT=blink
+#
+#	Targets:
+#		- dtb: Device tree for rootfs image
+#		- linux: Build the Linux kernel
+#		- fsbl: First-stage bootloader (requires Vitis Unified IDE)
+#		- ssbl: Second-stage bootloader by Pavel Demin, replaces U-Boot
+#		- xsa: Xilinx support archive used for device tree and FSBL.
+#		- bitstream: FPGA bitstream
+#		- impl: Vivado FPGA implementation
+#		- project: Vivado FPGA project
+#
+# License:
+#	Some targets are adapted from Pavel Demin's 'red-pitaya-notes'
+#	project, licensed under the MIT License.
+#	This project is licensed under the "BSD-3-Clause License".
+#
 SHELL=/bin/bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
 
-PROJECT ?= blink
+PROJECT ?= adc
 PART ?= xc7z010clg400-1
 PROCESSOR ?= ps7_cortexa9_0
+
+# Executables
 VIVADO = vivado
 XSCT = xsct
 VITIS = vitis
 VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
-
-DEVICE_TREE_VER := 2024.2
-DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
-
-# Targets for Analog Devices' SPI Engine
-_ADI_HDL_DIR := library/adi-hdl
-_ADI_HDL_IPS := $(dir $(shell find $(_ADI_HDL_DIR)/library/spi_engine -name Makefile))
-_ADI_HDL_IPS += $(dir $(shell find $(_ADI_HDL_DIR)/library/axi_pwm_gen -name Makefile))
-_ADI_HDL_IPS += $(dir $(shell find $(_ADI_HDL_DIR)/library/ad463x_data_capture -name Makefile))
-_ADI_HDL_ALL := $(addsuffix all, $(_ADI_HDL_IPS))
-_ADI_HDL_CLEAN := $(addsuffix clean, $(_ADI_HDL_IPS))
-
-# Targets for Pavel Demin's Red Pitaya Notes
-_RPN_DIR := library/red-pitaya-notes
-_PD_FILES := $(wildcard $(_RPN_DIR)/cores/*.v)
-_PD_CORES := $(basename $(notdir $(_PD_FILES)))
-_PD_CORES_BUILD_DIRS := $(addprefix $(_RPN_DIR)/tmp/cores/, $(_PD_CORES))
-
-HDL_FILES := $(shell find library \( -path $(_RPN_DIR) -o -path $(_ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
-HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
-
 # Overwrite Analog Devices' Vivado version check
 REQUIRED_VIVADO_VERSION ?= 2024.2
 export REQUIRED_VIVADO_VERSION
 
-SOURCES := $(wildcard ./library/*/*.v)
-SOURCES += $(wildcard ./library/*/*.sv)
-SOURCES += $(wildcard ./projects/$(PROJECT)/*.v)
-SOURCES += $(wildcard ./projects/$(PROJECT)/*.sv)
-SOURCES += $(wildcard ./projects/$(PROJECT)/*.tcl)
-SOURCES += $(wildcard ./contraints/*.xdc)
-SOURCES += $(wildcard ./contraints/*.tcl)
-ifeq ($(PROJECT), spitest)
-SOURCES += $(_ADI_HDL_ALL)
-endif
-ifeq ($(PROJECT), adc)
-SOURCES += $(_PD_CORES_BUILD_DIRS)
-endif
-
 BUILD_DIR = build/projects/$(PROJECT)
 PROJECTS = $(notdir $(wildcard ./projects/*))
+
+# Linux, SSBL, and device tree configuration
+DEVICE_TREE_VER ?= 2024.2
+DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
+SSBL_VERSION ?= 20231206
+SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
+LINUX_VERSION ?= 6.11
+LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION).tar.xz
+
+# Targets for Analog Devices' SPI Engine
+ADI_HDL_DIR := library/adi-hdl
+ADI_HDL_IPS := $(dir $(shell find $(ADI_HDL_DIR)/library/spi_engine -name Makefile))
+ADI_HDL_IPS += $(dir $(shell find $(ADI_HDL_DIR)/library/axi_pwm_gen -name Makefile))
+ADI_HDL_ALL := $(addsuffix all, $(ADI_HDL_IPS))
+ADI_HDL_CLEAN := $(addsuffix clean, $(ADI_HDL_IPS))
+
+# Targets for Pavel Demin's Red Pitaya Notes
+RPN_DIR := library/red-pitaya-notes
+RPN_CORE_FILES := $(wildcard $(RPN_DIR)/cores/*.v)
+RPN_CORES := $(basename $(notdir $(RPN_CORE_FILES)))
+RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
+
+HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
+HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
+
+# At this point, it is not possible to use 'wildcard', because the
+# fsbl directory does not yet exist.
+FSBL_SOURCES := $(BUILD_DIR)/fsbl/zynq_fsbl
+
+DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
+DTS_SOURCES += $(wildcard dts/*.dts)
+
+LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
+LINUX_OTHER_SOURCES += $(RPN_DIR)/patches/cma.c
+LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
+
+SOURCES := $(wildcard library/*/*.v)
+SOURCES += $(wildcard library/*/*.sv)
+SOURCES += $(wildcard projects/$(PROJECT)/*.v)
+SOURCES += $(wildcarddrivers/net/wireless/realtek/rtl8188eu/Makefile projects/$(PROJECT)/*.sv)
+SOURCES += $(wildcard projects/$(PROJECT)/*.tcl)
+SOURCES += $(wildcard contraints/*.xdc)
+SOURCES += $(wildcard contraints/*.tcl)
+ifeq ($(PROJECT), spitest)
+SOURCES += $(ADI_HDL_ALL)
+endif
+ifeq ($(PROJECT), adc)
+SOURCES += $(RPN_CORES_BUILD_DIRS)
+endif
 
 define bootbif
 img:
 {
-	[bootloader] $(BUILD_DIR)/fsbl/fsbl.elf $(_RPN_DIR)/tmp/ssbl.elf
-	[load=0x2000000] $(BUILD_DIR)/rootfs.dtb
-	[load=0x2008000] $(_RPN_DIR)/zImage.bin
+	[bootloader] build/fsbl.elf build/ssbl.elf
+	[load=0x2000000] build/rootfs.dtb
+	[load=0x2008000] build/zImage.bin
 }
 endef
-.PHONY: fsbl xsa bitstream impl project clean
-dtb: $(BUILD_DIR)/rootfs.dtb $(BUILD_DIR)/initrd.dtb
-fsbl: $(BUILD_DIR)/fsbl/fsbl.elf
-ssbl: $(_RPN_DIR)/tmp/ssbl.elf
+
+.PHONY: all image dtb linux fsbl ssbl xsa bitstream impl project clean
+all: image bitstream
+image: build/red-pitaya-debian-bookworm-armhf.img
+dtb: build/rootfs.dtb
+linux: build/zImage.bin
+fsbl: build/fsbl.elf
+ssbl: build/ssbl.elf
 xsa: $(BUILD_DIR)/$(PROJECT).xsa
 bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 project: $(BUILD_DIR)/$(PROJECT).xpr
-clean: $(_ADI_HDL_CLEAN)
-	$(MAKE) -C $(_RPN_DIR) clean
+
+clean: $(ADI_HDL_CLEAN)
+	$(MAKE) -C $(RPN_DIR) clean
 	rm -rf build
 
-build/boot.bin: fsbl ssbl dtb
+build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin
+	@# Build the Linux image
+	# The script may ask you for your password as administrator
+	# privileges are required for some operations.
+	./scripts/image.sh
+
+build/boot.bin: build/rootfs.dtb build/ssbl.elf build/fsbl.elf build/zImage.bin
+	@# Generate the boot.bin file using 'bootgen'
 	echo "$(bootbif)" > $(@D)/boot.bif
 	bootgen -image $(@D)/boot.bif -w -o $@
 
-$(BUILD_DIR)/rootfs.dtb: $(BUILD_DIR)/devicetree/system-top.dts $(_RPN_DIR)/dts
-	dtc -I dts -O dtb -o $@ \
-		-i $(<D) \
-		-i $(_RPN_DIR)/dts \
-		dts/rootfs.dts
+build/rootfs.dtb: $(BUILD_DIR)/dts/system-top.dts $(DTS_SOURCES)
+	@# Compile the device trees to a 'dtb'
+	dtc -I dts -O dtb -o $@ $(addprefix -i ,$(sort $(^D))) dts/rootfs.dts
 
-$(BUILD_DIR)/devicetree/system-top.dts: build/device-tree-xlnx $(BUILD_DIR)/$(PROJECT).xsa
+$(BUILD_DIR)/dts/system-top.dts: build/device-tree-xlnx $(BUILD_DIR)/$(PROJECT).xsa
+	@# Prepare the device tree sources using xsct
 	mkdir -p $(@D)
 	$(XSCT) scripts/devicetree.tcl $(PROJECT) $(PROCESSOR) $(DEVICE_TREE_VER)
+	@# Use /include/ instead of #include to make the dts files
+	@# compatible with 'dtc'.
 	sed -i 's|#include|/include/|' $@
 
-$(BUILD_DIR)/dts/system-top.dts: $(BUILD_DIR)/fsbl/hw/sdt/system-top.dts
-	mkdir -p $(@D)
-	cp $< $@
-	sed -i 's|#include|/include/|' $@
+build/ssbl.elf: build/ssbl-$(SSBL_VERSION)
+	@# Compile the second-stage bootloader
+	$(MAKE) -C $<
+	cp $</$(@F) $@
 
-$(BUILD_DIR)/fsbl/hw/sdt/system-top.dts: $(BUILD_DIR)/fsbl
+build/ssbl-$(SSBL_VERSION):
+	@# Download the sources for the second-stage bootloader,
+	@# a replacement for U-Boot.
+	mkdir -p $@
+	curl -L --output - $(SSBL_TARBALL) | tar xzv --strip-components 1 -C $@
 
-$(BUILD_DIR)/fsbl/fsbl.elf: $(BUILD_DIR)/fsbl
+.NOTPARALLEL: build/fsbl.elf $(FSBL_SOURCES)
+build/fsbl.elf: $(FSBL_SOURCES)
+	@# Compile the second stage bootloader
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
-	cp $</zynq_fsbl/build/fsbl.elf $@
+	cp $</build/fsbl.elf $@
 
-$(BUILD_DIR)/fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(_RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(_RPN_DIR)/patches/fsbl.patch
+$(FSBL_SOURCES): $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+	@# Prepare the FSBL sources using the Vitis Unified IDE
 	$(VITIS) --source scripts/fsbl.py create $(PROJECT)
-	cp $(_RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $@/zynq_fsbl
-	patch $@/zynq_fsbl/fsbl_hooks.c $(_RPN_DIR)/patches/fsbl.patch
-	sed -i 's\XPAR_PS7_ETHERNET_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
-	sed -i 's\XPAR_PS7_I2C_0_DEVICE_ID\0\g' $@/zynq_fsbl/red_pitaya_fsbl_hooks.c
-	sed -i '/fsbl_hooks.c)/a collect (PROJECT_LIB_SOURCES red_pitaya_fsbl_hooks.c)' $@/zynq_fsbl/CMakeLists.txt
+	@# Apply the MAC address hook for the FSBL
+	cp $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $@
+	patch $@/fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+	sed -i 's\XPAR_PS7_ETHERNET_0_DEVICE_ID\0\g' $@/red_pitaya_fsbl_hooks.c
+	sed -i 's\XPAR_PS7_I2C_0_DEVICE_ID\0\g' $@/red_pitaya_fsbl_hooks.c
+	sed -i '/fsbl_hooks.c)/a collect (PROJECT_LIB_SOURCES red_pitaya_fsbl_hooks.c)' $@/CMakeLists.txt
 
 build/device-tree-xlnx:
+	@# Download the 'xilinx/device-tree-xlnx' repository
 	mkdir -p $@
 	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xzv --strip-components 1 -C $@
 
 $(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).runs/impl_1
+	@# Generate the Xilinx support archive for the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
 
-$(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).xpr
+$(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).runs/impl_1
+	@# Build the bitstream from the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/bitstream.tcl -tclargs $(PROJECT)
 
 $(BUILD_DIR)/$(PROJECT).runs/impl_1: $(BUILD_DIR)/$(PROJECT).xpr
+	@# Run the implementation script for the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
 
 $(BUILD_DIR)/$(PROJECT).xpr: $(SOURCES)
 	mkdir -p $(@D)
-	# Run the project script
+	@# Run the project script
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
 
-$(_ADI_HDL_ALL):
+$(ADI_HDL_ALL):
 	$(MAKE) -C $(@D) all
 
-$(_ADI_HDL_CLEAN):
+$(ADI_HDL_CLEAN):
 	$(MAKE) -C $(@D) clean
 
-$(_PD_CORES_BUILD_DIRS): $(_PD_FILES)
-	$(MAKE) -C $(_RPN_DIR) tmp/cores/$(notdir $@)
+$(RPN_CORES_BUILD_DIRS): $(RPN_CORE_FILES)
+	@# Build the IPs of the red-pitaya-notes project
+	$(MAKE) -C $(RPN_DIR) tmp/cores/$(notdir $@)
 
-$(_RPN_DIR)/tmp/ssbl.elf:
-	$(MAKE) -C $(_RPN_DIR) tmp/ssbl.elf
+build/zImage.bin: build/linux-$(LINUX_VERSION)
+	@# Adapted from Pavel Demin's 'red-pitaya-notes' project
+	@# Builds the Linux kernel using the modified CMA with
+	@# the 'xilinx_zynq_defconfig' configuration.
+	@#
+	@# Clean the Linux build directory
+	$(MAKE) -C $< mrproper
+	@# Cross-compile Linux for Red Pitaya
+	$(MAKE) -C $< ARCH=arm \
+		CROSS_COMPILE=arm-linux-gnueabihf- \
+		-j $(shell nproc 2> /dev/null || echo 1) \
+		LOADADDR=0x8000 \
+		xilinx_zynq_defconfig \
+		zImage \
+		modules
+	cp $</arch/arm/boot/zImage $@
 
-$(_RPN_DIR)/zImage.bin:
-	$(MAKE) -C $(_RPN_DIR) $(@F)
+build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
+	mkdir -p $@
+	@# Download Linux source and unpack to build directory
+	curl -L --output - $(LINUX_TARBALL) | tar xv --xz --strip-components 1 -C $@
+	@# Patch Linux to include additional drivers and modify CMA.
+	patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
+	@# Copy additional sources and the configuration
+	cp $(RPN_DIR)/patches/cma.c $@/drivers/char
+	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)

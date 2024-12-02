@@ -12,13 +12,13 @@
 # Generates the build/red-pitaya-debian-*.img file. This can be flashed
 # to an SD card using 'dd if=build/red-pitaya-*.img of=/dev/<sd-card-path> bs=4M'
 
-set -exo pipefail
+set -euxo pipefail
 
 BUILD_DIR="./build"
 DEBIAN_SUITE="bookworm"
 DEBIAN_ARCH="armhf"
-LINUX_DIR="./library/red-pitaya-notes/tmp/linux-6.6"
-LINUX_VERSION="6.6.32-xilinx"
+LINUX_DIR="./build/linux-6.11"
+LINUX_VERSION="6.11.32-xilinx"
 IMAGE_FILE="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dnsmasq,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
@@ -121,6 +121,6 @@ sudo umount "$ROOT_DIR"
 sudo rm -rf -- "$ROOT_DIR"
 trap 'sudo losetup -d "$DEV"' EXIT
 
-if command -v 'resize2fs'; then
-    sudo resize2fs -M "$ROOT_PART"
-fi
+# if command -v 'resize2fs'; then
+#     sudo resize2fs -M "$ROOT_PART"
+# fi

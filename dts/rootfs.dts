@@ -1,0 +1,13 @@
+// Derived from github.com/pavel-demin/red-pitaya-notes, licensed under
+// the MIT license.
+
+/dts-v1/;
+
+/include/ "system-top.dts"
+/include/ "common.dts"
+
+/ {
+  chosen {
+    bootargs = "console=ttyPS0,115200 earlycon earlyprintk root=/dev/mmcblk0p2 rw rootfstype=ext4 rootwait cma=36M";
+  };
+};
