@@ -96,57 +96,59 @@ set_property CONFIG.CFG_DATA_WIDTH {96} [get_bd_cells hub]
 set_property CONFIG.STS_DATA_WIDTH {32} [get_bd_cells hub]
 
 # Config registers
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_adc
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_adc
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_adc]
 set_property CONFIG.DIN_FROM {0} [get_bd_cells reset_adc]
 set_property CONFIG.DIN_TO {0} [get_bd_cells reset_adc]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_adc]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_packetizer
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_packetizer
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_packetizer]
 set_property CONFIG.DIN_FROM {1} [get_bd_cells reset_packetizer]
 set_property CONFIG.DIN_TO {1} [get_bd_cells reset_packetizer]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_packetizer]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 reset_dma
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_dma
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_dma]
 set_property CONFIG.DIN_FROM {2} [get_bd_cells reset_dma]
 set_property CONFIG.DIN_TO {2} [get_bd_cells reset_dma]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_dma]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 ref_en
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 ref_en
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells ref_en]
 set_property CONFIG.DIN_FROM {3} [get_bd_cells ref_en]
 set_property CONFIG.DIN_TO {3} [get_bd_cells ref_en]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells ref_en]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 pwr_en
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 pwr_en
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells pwr_en]
 set_property CONFIG.DIN_FROM {4} [get_bd_cells pwr_en]
 set_property CONFIG.DIN_TO {4} [get_bd_cells pwr_en]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells pwr_en]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 io_en
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 io_en
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells io_en]
 set_property CONFIG.DIN_FROM {5} [get_bd_cells io_en]
 set_property CONFIG.DIN_TO {5} [get_bd_cells io_en]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells io_en]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 diffamp_en
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 diffamp_en
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells diffamp_en]
 set_property CONFIG.DIN_FROM {6} [get_bd_cells diffamp_en]
 set_property CONFIG.DIN_TO {6} [get_bd_cells diffamp_en]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells diffamp_en]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 opamp_en
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 opamp_en
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells opamp_en]
 set_property CONFIG.DIN_FROM {7} [get_bd_cells opamp_en]
 set_property CONFIG.DIN_TO {7} [get_bd_cells opamp_en]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells opamp_en]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 cfg_packetizer
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 cfg_packetizer
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells cfg_packetizer]
 set_property CONFIG.DIN_FROM {95} [get_bd_cells cfg_packetizer]
 set_property CONFIG.DIN_TO {64} [get_bd_cells cfg_packetizer]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells cfg_packetizer]
+set_property CONFIG.DOUT_WIDTH {32} [get_bd_cells cfg_packetizer]
 
-create_bd_cell -type ip -vlnv pavel-demin:user:port_slicer:1.0 addr_dma
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 addr_dma
+set_property CONFIG.DIN_WIDTH {96} [get_bd_cells addr_dma]
 set_property CONFIG.DIN_FROM {63} [get_bd_cells addr_dma]
 set_property CONFIG.DIN_TO {32} [get_bd_cells addr_dma]
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells addr_dma]
+set_property CONFIG.DOUT_WIDTH {32} [get_bd_cells addr_dma]
 
-create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant cfg_dma
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 cfg_dma
 set_property CONFIG.CONST_WIDTH {18} [get_bd_cells cfg_dma]
 set_property CONFIG.CONST_VAL {262143} [get_bd_cells cfg_dma]
 
@@ -215,6 +217,7 @@ connect_bd_net $cfg_data [get_bd_pins reset_adc/din]
 connect_bd_net $cfg_data [get_bd_pins addr_dma/din]
 connect_bd_net $cfg_data [get_bd_pins reset_dma/din]
 connect_bd_net $cfg_data [get_bd_pins reset_packetizer/din]
+connect_bd_net $cfg_data [get_bd_pins cfg_packetizer/din]
 connect_bd_net $cfg_data [get_bd_pins pwr_en/din]
 connect_bd_net $cfg_data [get_bd_pins ref_en/din]
 connect_bd_net $cfg_data [get_bd_pins io_en/din]
