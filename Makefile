@@ -112,6 +112,7 @@ fsbl: build/fsbl.elf
 ssbl: build/ssbl.elf
 xsa: $(BUILD_DIR)/$(PROJECT).xsa
 fpgautil: build/fpgautil
+bin: $(BUILD_DIR)/$(PROJECT).bin
 bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 project: $(BUILD_DIR)/$(PROJECT).xpr
@@ -120,7 +121,7 @@ clean: $(ADI_HDL_CLEAN)
 	$(MAKE) -C $(RPN_DIR) clean
 	rm -rf build
 
-build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin
+build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil
 	@# Build the Linux image
 	# The script may ask you for your password as administrator
 	# privileges are required for some operations.
@@ -177,9 +178,14 @@ build/device-tree-xlnx:
 	mkdir -p $@
 	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xzv --strip-components 1 -C $@
 
-$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).runs/impl_1
+$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
 	@# Generate the Xilinx support archive for the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
+
+$(BUILD_DIR)/$(PROJECT).bin: $(BUILD_DIR)/$(PROJECT).bit
+	echo "all:{ $< }" > $(@D)/$(PROJECT).bif
+	bootgen -image $(@D)/$(PROJECT).bif -arch zynq -process_bitstream bin -w -o $(@D)/$(PROJECT).bit.bin
+	mv $(@D)/$(PROJECT).bit.bin $@
 
 $(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 	@# Build the bitstream from the current project
@@ -238,7 +244,6 @@ build/fpgautil.c:
 
 build/fpgautil: build/fpgautil.c
 	arm-linux-gnueabihf-gcc $< -o $@
-
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)

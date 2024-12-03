@@ -91,9 +91,10 @@ find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursi
 sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION"
 
-# Copy the resize utility and make sure it is executable
+# Copy utilities
 sudo cp ./linux/resize.sh "$ROOT_DIR/usr/bin/resize-sd"
 sudo chmod +x "$ROOT_DIR/usr/bin/resize-sd"
+sudo cp "$BUILD_DIR/fpgautil" "$ROOT_DIR/usr/bin"
 
 # Prepare the chroot environment (requires QEMU)
 sudo cp /usr/bin/qemu-arm-static "$ROOT_DIR/usr/bin/"
