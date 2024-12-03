@@ -15,32 +15,39 @@
 set -euxo pipefail
 
 BUILD_DIR="./build"
+BUILD_DIR_TEMP="./build/image"
+mkdir -p "$BUILD_DIR_TEMP"
 DEBIAN_SUITE="bookworm"
 DEBIAN_ARCH="armhf"
 LINUX_DIR="./build/linux-6.11"
 LINUX_VERSION="6.11.32-xilinx"
-IMAGE_FILE="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
+IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
+IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
 DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dnsmasq,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
 DEBIAN_HOSTNAME="redpitaya"
 
-BOOT_DIR=$(mktemp -d)
-ROOT_DIR=$(mktemp -d)
-# Remove directories after exit
-traps='rm -rf -- "$BOOT_DIR" "$ROOT_DIR"'
-trap "$traps" EXIT
+cleanup() {
+    # Unmount all devices and delete temporary directories
+    if [[ -v BOOT_DIR ]]; then
+        sudo umount "$BOOT_DIR"
+    fi
+    if [[ -v ROOT_DIR ]]; then
+        sudo umount "$ROOT_DIR"
+    fi
+    rm -rf -- "$BUILD_DIR_TEMP"
+    # Remove the loop device
+    if [[ -v DEV ]]; then
+        sudo losetup -d "$DEV"
+    fi
+}
+trap "cleanup" EXIT
 
-# If the image already exist, delete it
-if [[ -f "$IMAGE_FILE" ]]; then
-    rm -- "$IMAGE_FILE"
-fi
 # Generate image of size bs*count
 dd if=/dev/zero of="$IMAGE_FILE" bs=1M count=1024
 
 # Create loop device for image
 DEV=$(sudo losetup --show -f "$IMAGE_FILE")
-traps='sudo losetup -d "$DEV" && '$traps
-trap "$traps" EXIT
 
 # Create partitions for the image
 sudo parted -s "$DEV" mklabel msdos
@@ -58,21 +65,21 @@ if [[ ! -b "$ROOT_PART" || ! -b "$BOOT_PART" ]]; then
 fi
 
 # Make the file systems
-sudo mkfs.vfat -v $BOOT_PART
-sudo mkfs.ext4 -F -j $ROOT_PART
+sudo mkfs.vfat -v "$BOOT_PART"
+sudo mkfs.ext4 -F -j "$ROOT_PART"
+
+BOOT_DIR=$(mktemp --tmpdir="$BUILD_DIR_TEMP" -d)
+ROOT_DIR=$(mktemp --tmpdir="$BUILD_DIR_TEMP" -d)
 
 # Mount the two partitions to their temporary directories
-sudo mount $BOOT_PART $BOOT_DIR
-sudo mount $ROOT_PART $ROOT_DIR
-traps='sudo umount "$BOOT_DIR" && sudo umount "$ROOT_DIR" && '$traps
-trap "$traps" EXIT
+sudo mount "$BOOT_PART" "$BOOT_DIR"
+sudo mount "$ROOT_PART" "$ROOT_DIR"
 
 # Copy the bootloader
 sudo cp "$BUILD_DIR/boot.bin" "$BOOT_DIR/boot.bin"
 sudo umount "$BOOT_DIR"
 sudo rm -rf -- "$BOOT_DIR"
-traps='sudo umount "$ROOT_DIR" && sudo losetup -d "$DEV" && rm -rf -- "$BOOT_DIR"'
-trap "$traps" EXIT
+unset -v BOOT_DIR
 
 # Prepare Debian system
 sudo debootstrap --foreign --include="$DEBIAN_PACKAGES" --arch "$DEBIAN_ARCH" "$DEBIAN_SUITE" "$ROOT_DIR"
@@ -82,7 +89,7 @@ MOD_DIR="$ROOT_DIR/lib/modules/$LINUX_VERSION"
 sudo mkdir -p "$MOD_DIR/kernel"
 find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursive --chown=0:0 --files-from=- "$LINUX_DIR" "$MOD_DIR/kernel"
 sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
-sudo depmod -a -b $ROOT_DIR $LINUX_VERSION
+sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION"
 
 # Copy the resize utility and make sure it is executable
 sudo cp ./linux/resize.sh "$ROOT_DIR/usr/bin/resize-sd"
@@ -122,9 +129,11 @@ sudo rm -- "$ROOT_DIR/usr/bin/qemu-arm-static"
 
 # Un-mount image
 sudo umount "$ROOT_DIR"
-sudo rm -rf -- "$ROOT_DIR"
-trap 'sudo losetup -d "$DEV"' EXIT
+rm -rf -- "$ROOT_DIR"
+unset -v ROOT_DIR
 
-# if command -v 'resize2fs'; then
-#     sudo resize2fs -M "$ROOT_PART"
-# fi
+# If the image already exist, delete it
+if [[ -f "$IMAGE_FILE_FINAL" ]]; then
+    rm -- "$IMAGE_FILE_FINAL"
+fi
+mv "$IMAGE_FILE" "$IMAGE_FILE_FINAL"
