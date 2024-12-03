@@ -24,6 +24,9 @@ create_bd_port -dir O exp_adc_opamp_en_o
 # External clock (on Red Pitaya)
 create_bd_port -dir I adc_clk_p_i
 create_bd_port -dir I adc_clk_n_i
+# LEDs
+create_bd_port -dir O -from 0 -to 7 led_o
+
 
 # Constants (VCC = 1, GND = 0)
 # On older Vivado versions (pre 2024.2), use the following instead
@@ -163,6 +166,10 @@ set_property CONFIG.AXI_ID_WIDTH {3} [get_bd_cells dma]
 set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells dma]
 set_property CONFIG.FIFO_WRITE_DEPTH {1024} [get_bd_cells dma]
 
+# LED driver
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 led_concat
+set_property CONFIG.NUM_PORTS {8} [get_bd_cells led_concat]
+
 # Connections
 set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
 set spi_clk [get_bd_pins clk_wiz_0/clk_out2]
@@ -234,5 +241,15 @@ connect_bd_net [get_bd_pins io_en/dout] [get_bd_ports exp_adc_io_en_o]
 connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en_o]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en_o]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en_o]
+# LEDs
+connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins led_concat/In0]
+connect_bd_net $aresetn [get_bd_pins led_concat/In1]
+connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_pins led_concat/In2]
+connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_pins led_concat/In3]
+connect_bd_net [get_bd_pins ref_en/dout] [get_bd_pins led_concat/In4]
+connect_bd_net [get_bd_pins io_en/dout] [get_bd_pins led_concat/In5]
+connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_pins led_concat/In6]
+connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_pins led_concat/In7]
+
 
 regenerate_bd_layout
