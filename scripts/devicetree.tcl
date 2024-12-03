@@ -34,6 +34,7 @@ hsi open_hw_design $build_dir/$name.xsa
 hsi set_repo_path $repo_path
 hsi create_sw_design device-tree -os device_tree -proc $processor
 hsi set_property CONFIG.kernel_version $version [hsi get_os]
+hsi set_property CONFIG.dt_overlay {true} [hsi get_os]
 
 hsi generate_target -dir $build_dir/dts
 hsi close_hw_design [hsi current_hw_design]
