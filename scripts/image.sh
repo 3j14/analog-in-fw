@@ -23,7 +23,7 @@ LINUX_DIR="./build/linux-6.11"
 LINUX_VERSION="6.11.32-xilinx"
 IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
-DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dnsmasq,dhcpcd"
+DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
 DEBIAN_HOSTNAME="redpitaya"
 
@@ -98,7 +98,7 @@ sudo chmod +x "$ROOT_DIR/usr/bin/resize-sd"
 # Prepare the chroot environment (requires QEMU)
 sudo cp /usr/bin/qemu-arm-static "$ROOT_DIR/usr/bin/"
 # Enter chroot
-sudo chroot "$ROOT_DIR" qemu-arm-static /bin/bash <<EOF
+sudo chroot "$ROOT_DIR" /bin/bash <<EOF
 export LANG=C
 export LC_ALL=C
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -110,7 +110,6 @@ sed -i "/^# en_US.UTF-8 UTF-8$/s/^# //" etc/locale.gen
 locale-gen
 update-locale LANG=en_US.UTF-8
 
-systemctl enable dnsmasq
 systemctl enable nftables
 systemctl enable dhcpcd
 
