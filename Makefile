@@ -53,6 +53,8 @@ SSBL_VERSION ?= 20231206
 SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
 LINUX_VERSION ?= 6.11
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION).tar.xz
+FPGAUTIL_VERSION ?= 2024.2
+FPGAUTIL_C := https://github.com/Xilinx/meta-xilinx/raw/refs/tags/xlnx-rel-v$(FPGAUTIL_VERSION)/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c
 
 # Targets for Analog Devices' SPI Engine
 ADI_HDL_DIR := library/adi-hdl
@@ -69,10 +71,6 @@ RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
 
 HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
-
-# At this point, it is not possible to use 'wildcard', because the
-# fsbl directory does not yet exist.
-FSBL_SOURCES := $(BUILD_DIR)/fsbl/zynq_fsbl
 
 DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
 DTS_SOURCES += $(wildcard dts/*.dts)
@@ -96,9 +94,10 @@ SOURCES += $(RPN_CORES_BUILD_DIRS)
 endif
 
 define bootbif
+// arch = zynq; split = false; format = BIN
 img:
 {
-	[bootloader] build/fsbl.elf build/ssbl.elf
+	[bootloader] build/fsbl.elf $(BUILD_DIR)/$(PROJECT).bit build/ssbl.elf
 	[load=0x2000000] build/rootfs.dtb
 	[load=0x2008000] build/zImage.bin
 }
@@ -112,6 +111,7 @@ linux: build/zImage.bin
 fsbl: build/fsbl.elf
 ssbl: build/ssbl.elf
 xsa: $(BUILD_DIR)/$(PROJECT).xsa
+fpgautil: build/fpgautil
 bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 project: $(BUILD_DIR)/$(PROJECT).xpr
@@ -154,13 +154,15 @@ build/ssbl-$(SSBL_VERSION):
 	mkdir -p $@
 	curl -L --output - $(SSBL_TARBALL) | tar xzv --strip-components 1 -C $@
 
-.NOTPARALLEL: build/fsbl.elf $(FSBL_SOURCES)
-build/fsbl.elf: $(FSBL_SOURCES)
+.NOTPARALLEL: build/fsbl.elf $(BUILD_DIR)/fsbl/zynq_fsbl
+build/fsbl.elf: $(BUILD_DIR)/fsbl/zynq_fsbl
 	@# Compile the second stage bootloader
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
 	cp $</build/fsbl.elf $@
 
-$(FSBL_SOURCES): $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+$(BUILD_DIR)/fsbl/zynq_fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+	@# Remove fsbl directory to prevent errors when creating the sources
+	rm -rf -- $(@D)
 	@# Prepare the FSBL sources using the Vitis Unified IDE
 	$(VITIS) --source scripts/fsbl.py create $(PROJECT)
 	@# Apply the MAC address hook for the FSBL
@@ -188,6 +190,7 @@ $(BUILD_DIR)/$(PROJECT).runs/impl_1: $(BUILD_DIR)/$(PROJECT).xpr
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
 
 $(BUILD_DIR)/$(PROJECT).xpr: $(SOURCES)
+	@# Create the project directory
 	mkdir -p $(@D)
 	@# Run the project script
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
@@ -222,12 +225,20 @@ build/zImage.bin: build/linux-$(LINUX_VERSION)
 build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	mkdir -p $@
 	@# Download Linux source and unpack to build directory
-	curl -L --output - $(LINUX_TARBALL) | tar xv --xz --strip-components 1 -C $@
+	curl -L --output - $(LINUX_TARBALL) | tar x --xz --strip-components 1 -C $@
 	@# Patch Linux to include additional drivers and modify CMA.
 	patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
 	@# Copy additional sources and the configuration
 	cp $(RPN_DIR)/patches/cma.c $@/drivers/char
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
+
+build/fpgautil.c:
+	@# Download fpgautil
+	curl -L --output $@ $(FPGAUTIL_C)
+
+build/fpgautil: build/fpgautil.c
+	arm-linux-gnueabihf-gcc $< -o $@
+
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
