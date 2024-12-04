@@ -249,6 +249,10 @@ build/fpgautil.c:
 build/fpgautil: build/fpgautil.c
 	arm-linux-gnueabihf-gcc $< -o $@
 
+$(BUILD_DIR)/software/%.elf:
+	$(MAKE) -C ./projects/$(PROJECT)/software BUILD_DIR=$(@D) $@
+
+
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
 	verilator config.vlt $(HDL_FILES) /usr/share/yosys/xilinx/cells_sim.v --lint-only --timing

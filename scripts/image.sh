@@ -14,6 +14,9 @@
 
 set -euxo pipefail
 
+if [[ -v "1" ]]; then
+    EXTRA_EXE="$1"
+fi
 BUILD_DIR="./build"
 BUILD_DIR_TEMP="./build/image"
 mkdir -p "$BUILD_DIR_TEMP"
@@ -95,6 +98,9 @@ sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION"
 sudo cp ./linux/resize.sh "$ROOT_DIR/usr/bin/resize-sd"
 sudo chmod +x "$ROOT_DIR/usr/bin/resize-sd"
 sudo cp "$BUILD_DIR/fpgautil" "$ROOT_DIR/usr/bin"
+if [[ -v EXTRA_EXE ]]; then
+    sudo cp -- "$EXTRA_EXE" "$ROOT_DIR/usr/bin"
+fi
 
 # Prepare the chroot environment (requires QEMU)
 sudo cp /usr/bin/qemu-arm-static "$ROOT_DIR/usr/bin/"
