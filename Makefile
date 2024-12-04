@@ -82,10 +82,10 @@ LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
 SOURCES := $(wildcard library/*/*.v)
 SOURCES += $(wildcard library/*/*.sv)
 SOURCES += $(wildcard projects/$(PROJECT)/*.v)
-SOURCES += $(wildcarddrivers/net/wireless/realtek/rtl8188eu/Makefile projects/$(PROJECT)/*.sv)
+SOURCES += $(wildcard projects/$(PROJECT)/*.sv)
 SOURCES += $(wildcard projects/$(PROJECT)/*.tcl)
-SOURCES += $(wildcard contraints/*.xdc)
-SOURCES += $(wildcard contraints/*.tcl)
+SOURCES += $(wildcard constraints/*.xdc)
+SOURCES += $(wildcard constraints/*.tcl)
 ifeq ($(PROJECT), spitest)
 SOURCES += $(ADI_HDL_ALL)
 endif
@@ -119,7 +119,7 @@ project: $(BUILD_DIR)/$(PROJECT).xpr
 
 clean: $(ADI_HDL_CLEAN)
 	$(MAKE) -C $(RPN_DIR) clean
-	rm -rf build
+	rm -rf -- build .Xil _ide vivado_*.str
 
 build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil
 	@# Build the Linux image
@@ -147,13 +147,14 @@ $(BUILD_DIR)/dts/system-top.dts: build/device-tree-xlnx $(BUILD_DIR)/$(PROJECT).
 build/ssbl.elf: build/ssbl-$(SSBL_VERSION)
 	@# Compile the second-stage bootloader
 	$(MAKE) -C $<
-	cp $</$(@F) $@
+	mv $</$(@F) $@
 
 build/ssbl-$(SSBL_VERSION):
 	@# Download the sources for the second-stage bootloader,
 	@# a replacement for U-Boot.
 	mkdir -p $@
-	curl -L --output - $(SSBL_TARBALL) | tar xzv --strip-components 1 -C $@
+	curl -L --output - $(SSBL_TARBALL) | tar xz --strip-components 1 -C $@
+	sed -i 's\arm-none-eabi-gcc\/usr/bin/arm-none-eabi-gcc\' $@/Makefile
 
 .NOTPARALLEL: build/fsbl.elf $(BUILD_DIR)/fsbl/zynq_fsbl
 build/fsbl.elf: $(BUILD_DIR)/fsbl/zynq_fsbl
@@ -176,7 +177,7 @@ $(BUILD_DIR)/fsbl/zynq_fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_
 build/device-tree-xlnx:
 	@# Download the 'xilinx/device-tree-xlnx' repository
 	mkdir -p $@
-	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xzv --strip-components 1 -C $@
+	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xz --strip-components 1 -C $@
 
 $(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
 	@# Generate the Xilinx support archive for the current project
