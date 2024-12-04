@@ -127,7 +127,7 @@ build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin buil
 	# privileges are required for some operations.
 	./scripts/image.sh
 
-build/boot.bin: build/rootfs.dtb build/ssbl.elf build/fsbl.elf build/zImage.bin
+build/boot.bin: build/rootfs.dtb build/ssbl.elf build/fsbl.elf build/zImage.bin $(BUILD_DIR)/$(PROJECT).bit
 	@# Generate the boot.bin file using 'bootgen'
 	echo "$(bootbif)" > $(@D)/boot.bif
 	bootgen -image $(@D)/boot.bif -w -o $@
