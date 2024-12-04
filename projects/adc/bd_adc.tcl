@@ -242,6 +242,7 @@ connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en_o]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en_o]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en_o]
 # LEDs
+connect_bd_net [get_bd_pins led_concat/dout] [get_bd_ports led_o]
 connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins led_concat/In0]
 connect_bd_net $aresetn [get_bd_pins led_concat/In1]
 connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_pins led_concat/In2]
