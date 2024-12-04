@@ -10,7 +10,9 @@
 #		make PROJECT=blink
 #
 #	Targets:
+#		- image: SD card image
 #		- dtb: Device tree for rootfs image
+#		- boot: boot.bin file
 #		- linux: Build the Linux kernel
 #		- fsbl: First-stage bootloader (requires Vitis Unified IDE)
 #		- ssbl: Second-stage bootloader by Pavel Demin, replaces U-Boot
@@ -106,6 +108,7 @@ endef
 .PHONY: all image dtb linux fsbl ssbl xsa bitstream impl project clean
 all: image bitstream
 image: build/red-pitaya-debian-bookworm-armhf.img
+boot: build/boot.bin
 dtb: build/rootfs.dtb
 linux: build/zImage.bin
 fsbl: build/fsbl.elf
