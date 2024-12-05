@@ -11,6 +11,7 @@
 #
 #	Targets:
 #		- image: SD card image
+#		- software: Software part of the projects (binary executable)
 #		- dtb: Device tree for rootfs image
 #		- boot: boot.bin file
 #		- linux: Build the Linux kernel
@@ -95,6 +96,8 @@ ifeq ($(PROJECT), adc)
 SOURCES += $(RPN_CORES_BUILD_DIRS)
 endif
 
+EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
+
 define bootbif
 // arch = zynq; split = false; format = BIN
 img:
@@ -108,6 +111,7 @@ endef
 .PHONY: all image dtb linux fsbl ssbl xsa bitstream impl project clean
 all: image bitstream
 image: build/red-pitaya-debian-bookworm-armhf.img
+software: $(EXTRA_EXE)
 boot: build/boot.bin
 dtb: build/rootfs.dtb
 linux: build/zImage.bin
@@ -124,11 +128,11 @@ clean: $(ADI_HDL_CLEAN)
 	$(MAKE) -C $(RPN_DIR) clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
-build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil
+build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE)
 	@# Build the Linux image
 	# The script may ask you for your password as administrator
 	# privileges are required for some operations.
-	./scripts/image.sh
+	./scripts/image.sh $(LINUX_VERSION) $(EXTRA_EXE)
 
 build/boot.bin: build/rootfs.dtb build/ssbl.elf build/fsbl.elf build/zImage.bin $(BUILD_DIR)/$(PROJECT).bit
 	@# Generate the boot.bin file using 'bootgen'
@@ -249,9 +253,10 @@ build/fpgautil.c:
 build/fpgautil: build/fpgautil.c
 	arm-linux-gnueabihf-gcc $< -o $@
 
-$(BUILD_DIR)/software/%.elf:
-	$(MAKE) -C ./projects/$(PROJECT)/software BUILD_DIR=$(@D) $@
-
+$(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c
+	mkdir -p -- $(@D)
+	$(MAKE) -C $(<D) BUILD_DIR=$(abspath $(@D)) $(abspath $@.elf)
+	mv -- $@.elf $@
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)

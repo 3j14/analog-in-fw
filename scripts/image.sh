@@ -92,19 +92,21 @@ unset -v BOOT_DIR
 sudo debootstrap --foreign --include="$DEBIAN_PACKAGES" --arch "$DEBIAN_ARCH" "$DEBIAN_SUITE" "$ROOT_DIR"
 
 # Copy modules from Linux Kernel
-MOD_DIR="$ROOT_DIR/lib/modules/$LINUX_VERSION"
+MOD_DIR="$ROOT_DIR/lib/modules/$LINUX_VERSION_FULL"
 sudo mkdir -p "$MOD_DIR/kernel"
 find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursive --chown=0:0 --files-from=- "$LINUX_DIR" "$MOD_DIR/kernel"
 sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
-sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION"
+sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
 
 # Copy utilities
 sudo cp ./linux/resize.sh "$ROOT_DIR/usr/bin/resize-sd"
 sudo chmod +x "$ROOT_DIR/usr/bin/resize-sd"
 sudo cp "$BUILD_DIR/fpgautil" "$ROOT_DIR/usr/bin"
-if [[ -v EXTRA_EXE ]]; then
-    sudo cp -- "$EXTRA_EXE" "$ROOT_DIR/usr/bin"
-fi
+while [[ "$#" -gt 0 ]]; do
+    # Copy file $1 to location $2
+    sudo cp -- "$1" "$ROOT_DIR/usr/bin"
+    shift
+done
 
 # Prepare the chroot environment (requires QEMU)
 sudo cp /usr/bin/qemu-arm-static "$ROOT_DIR/usr/bin/"
