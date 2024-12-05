@@ -14,16 +14,20 @@
 
 set -euxo pipefail
 
-if [[ -v "1" ]]; then
-    EXTRA_EXE="$1"
+if [[ "$#" -lt 1 ]]; then
+    echo "Usage: $0 linux-version [files]"
+    exit 1;
 fi
+
 BUILD_DIR="./build"
 BUILD_DIR_TEMP="./build/image"
 mkdir -p "$BUILD_DIR_TEMP"
 DEBIAN_SUITE="bookworm"
 DEBIAN_ARCH="armhf"
-LINUX_DIR="./build/linux-6.11"
-LINUX_VERSION="6.11.32-xilinx"
+LINUX_VERSION="$1"
+shift
+LINUX_DIR="./build/linux-$LINUX_VERSION"
+LINUX_VERSION_FULL="$(make -s -C "$LINUX_DIR" kernelversion)-xilinx"
 IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
 DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dhcpcd"
