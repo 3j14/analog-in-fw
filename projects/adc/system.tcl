@@ -9,5 +9,8 @@ update_ip_catalog
 
 set_property top axis_exp_adc [current_fileset]
 update_compile_order -fileset sources_1
-
 source projects/adc/bd_adc.tcl
+
+assign_bd_address -target_address_space /ps/Data [get_bd_addr_segs hub/s_axi/reg0] -force
+set_property range 256M [get_bd_addr_segs {ps/Data/SEG_hub_reg0}]
+

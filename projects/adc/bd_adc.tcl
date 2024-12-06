@@ -166,6 +166,14 @@ set_property CONFIG.AXI_ID_WIDTH {3} [get_bd_cells dma]
 set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells dma]
 set_property CONFIG.FIFO_WRITE_DEPTH {1024} [get_bd_cells dma]
 
+# Fifo r/w counts
+create_bd_cell -type ip -vlnv pavel-demin:user:axis_fifo:1.0 adc_w_fifo
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 concat_fifo_status
+set_property -dict [list \
+  CONFIG.IN0_WIDTH {16} \
+  CONFIG.IN1_WIDTH {16} \
+] [get_bd_cells concat_fifo_status]
+
 # LED driver
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 led_concat
 set_property CONFIG.NUM_PORTS {8} [get_bd_cells led_concat]
@@ -197,6 +205,13 @@ connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc/spi_csn]
 connect_bd_net [get_bd_pins adc/spi_sdi] [get_bd_ports exp_adc_sdi]
 connect_bd_net [get_bd_pins adc/spi_sdo] [get_bd_ports exp_adc_sdo]
 connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_ports exp_adc_resetn]
+# Fifo
+connect_bd_intf_net [get_bd_intf_pins adc_w_fifo/m_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
+connect_bd_net $aresetn [get_bd_pins adc_w_fifo/aresetn]
+connect_bd_net $ref_clk [get_bd_pins adc_w_fifo/aclk]
+connect_bd_net [get_bd_pins adc_w_fifo/write_count] [get_bd_pins concat_fifo_status/In0]
+connect_bd_net [get_bd_pins adc_w_fifo/read_count] [get_bd_pins concat_fifo_status/In1]
+connect_bd_net [get_bd_pins concat_fifo_status/dout] [get_bd_pins hub/sts_data]
 # AXIS clock converters
 connect_bd_intf_net [get_bd_intf_pins clk_converter_in/M_AXIS] [get_bd_intf_pins adc/s_axis]
 connect_bd_intf_net [get_bd_intf_pins adc/m_axis] [get_bd_intf_pins clk_converter_out/S_AXIS]
@@ -216,7 +231,7 @@ connect_bd_net $ref_clk [get_bd_pins dma/aclk]
 connect_bd_net $ref_clk [get_bd_pins packetizer/aclk]
 # Hub
 connect_bd_intf_net [get_bd_intf_pins ps/M_AXI_GP0] [get_bd_intf_pins hub/s_axi]
-connect_bd_intf_net [get_bd_intf_pins hub/m00_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
+connect_bd_intf_net [get_bd_intf_pins hub/m00_axis] [get_bd_intf_pins adc_w_fifo/s_axis]
 connect_bd_net $ref_clk [get_bd_pins hub/aclk]
 connect_bd_net $aresetn [get_bd_pins hub/aresetn]
 # Registers
@@ -251,6 +266,5 @@ connect_bd_net [get_bd_pins ref_en/dout] [get_bd_pins led_concat/In4]
 connect_bd_net [get_bd_pins io_en/dout] [get_bd_pins led_concat/In5]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_pins led_concat/In6]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_pins led_concat/In7]
-
 
 regenerate_bd_layout

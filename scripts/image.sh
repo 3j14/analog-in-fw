@@ -14,8 +14,8 @@
 
 set -euxo pipefail
 
-if [[ "$#" -lt 1 ]]; then
-    echo "Usage: $0 linux-version [files]"
+if [[ "$#" -lt 2 ]]; then
+    echo "Usage: $0 project-name linux-version [files]"
     exit 1;
 fi
 
@@ -24,13 +24,15 @@ BUILD_DIR_TEMP="./build/image"
 mkdir -p "$BUILD_DIR_TEMP"
 DEBIAN_SUITE="bookworm"
 DEBIAN_ARCH="armhf"
+PROJECT_NAME="$1"
+shift
 LINUX_VERSION="$1"
 shift
 LINUX_DIR="./build/linux-$LINUX_VERSION"
 LINUX_VERSION_FULL="$(make -s -C "$LINUX_DIR" kernelversion)-xilinx"
 IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
-DEBIAN_PACKAGES="locales,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dhcpcd"
+DEBIAN_PACKAGES="locales,exfatprogs,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
 DEBIAN_HOSTNAME="redpitaya"
 
@@ -97,6 +99,18 @@ sudo mkdir -p "$MOD_DIR/kernel"
 find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursive --chown=0:0 --files-from=- "$LINUX_DIR" "$MOD_DIR/kernel"
 sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
+
+# Copy device tree overlay and bin file
+_firmware_dir="$ROOT_DIR/lib/firmware"
+sudo mkdir -p -- "$_firmware_dir"
+_bin_file="$BUILD_DIR/projects/$PROJECT_NAME/$PROJECT_NAME.bin"
+_dtbo_file="$BUILD_DIR/projects/$PROJECT_NAME/pl.dtbo"
+if [[ -f "$_bin_file" ]]; then
+    sudo cp -- "$_bin_file" "$_firmware_dir"
+fi
+if [[ -f "$_dtbo_file" ]]; then
+    sudo cp -- "$_dtbo_file" "$_firmware_dir"
+fi
 
 # Copy utilities
 sudo cp ./linux/resize.sh "$ROOT_DIR/usr/bin/resize-sd"
