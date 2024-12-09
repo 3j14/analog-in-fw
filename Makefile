@@ -275,6 +275,6 @@ verilator-lint: $(HDL_FILES)
 	verilator config.vlt $(HDL_FILES) /usr/share/yosys/xilinx/cells_sim.v --lint-only --timing
 
 .PHONY: verible-lint
-verible-ling: $(HDL_FILES)
+verible-lint: $(HDL_FILES)
 	verible-verilog-lint $(HDL_FILES)
 
