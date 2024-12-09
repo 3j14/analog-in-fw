@@ -32,7 +32,7 @@ LINUX_DIR="./build/linux-$LINUX_VERSION"
 LINUX_VERSION_FULL="$(make -s -C "$LINUX_DIR" kernelversion)-xilinx"
 IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
-DEBIAN_PACKAGES="locales,exfatprogs,openssh-server,ca-certificates,fake-hwclock,usbutils,psmisc,lsof,vim,curl,wget,dhcpcd"
+DEBIAN_PACKAGES="locales,exfatprogs,openssh-server,ca-certificates,fake-hwclock,usbutils,python3,python3-ipython,psmisc,lsof,vim,curl,wget,dhcpcd"
 DEBIAN_PASSWORD="redpitaya"
 DEBIAN_HOSTNAME="redpitaya"
 
