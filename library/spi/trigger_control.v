@@ -14,12 +14,13 @@ module trigger_control (
             counter <= 32'b0;
         end else if (divider != 32'b0) begin
             if (trigger) begin
-                counter <= 1;
+                counter <= 0;
+            end else begin
+                counter <= counter + 1;
             end
-            counter <= counter + 1;
         end else begin
             counter <= 32'b0;
         end
     end
-    assign trigger = (32'b1 << divider[4:0]) == counter;
+    assign trigger = (counter == divider) & |counter;
 endmodule
