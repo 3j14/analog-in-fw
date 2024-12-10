@@ -1,11 +1,10 @@
-module axi_exp_adc_cfg #(
-) (
+module axi_exp_adc_cfg (
     input  wire        aclk,
     input  wire        aresetn,
     output wire [31:0] cfg,
     output wire [31:0] dma_cfg,
     output wire [31:0] packetizer_cfg,
-    input  wire [32:0] status,
+    input  wire [31:0] status,
     // AXIS manager to ADC
     output wire [31:0] m_axis_tdata,
     output wire        m_axis_tvalid,
@@ -41,11 +40,11 @@ module axi_exp_adc_cfg #(
     localparam reg [29:0] AddrPacketizer = 30'h0000_0010;
     localparam reg [29:0] AddrAxis = 30'h0000_0014;
 
-    reg [31:0] config_reg;
-    reg [31:0] status_reg;
-    reg [31:0] dma_cfg_reg;
-    reg [31:0] packetizer_cfg_reg;
-    reg [31:0] axis_reg;
+    reg [31:0] config_reg = 32'b0;
+    reg [31:0] status_reg = 32'b0;
+    reg [31:0] dma_cfg_reg = 32'b0;
+    reg [31:0] packetizer_cfg_reg = 32'b0;
+    reg [31:0] axis_reg = 32'b0;
 
     reg [31:0] axi_awaddr;
     reg axi_awready;
@@ -56,7 +55,7 @@ module axi_exp_adc_cfg #(
     reg axi_arready;
     reg [1:0] axi_rresp;
     reg axi_rvalid;
-    reg axis_tvalid;
+    reg axis_tvalid = 1'b0;
 
     assign s_axi_awready = axi_awready;
     assign s_axi_wready  = axi_wready;
@@ -66,14 +65,14 @@ module axi_exp_adc_cfg #(
     assign s_axi_rresp   = axi_rresp;
     assign s_axi_rvalid  = axi_rvalid;
 
-    reg [1:0] state_write;
-    reg [1:0] state_read;
-
     localparam reg [1:0] StateIdle = 2'b00;
     localparam reg [1:0] StateRaddr = 2'b01;
     localparam reg [1:0] StateRdata = 2'b11;
     localparam reg [1:0] StateWaddr = 2'b01;
     localparam reg [1:0] StateWdata = 2'b11;
+
+    reg [1:0] state_write = StateIdle;
+    reg [1:0] state_read = StateIdle;
 
     integer byte_index;
 
@@ -138,7 +137,7 @@ module axi_exp_adc_cfg #(
             case (state_read)
                 StateIdle: begin
                     axi_arready <= 1;
-                    state_write <= StateRaddr;
+                    state_read  <= StateRaddr;
                 end
                 StateRaddr: begin
                     if (s_axi_arvalid && s_axi_arready) begin
@@ -177,6 +176,7 @@ module axi_exp_adc_cfg #(
             dma_cfg_reg <= 0;
             packetizer_cfg_reg <= 0;
             axis_reg <= 0;
+            trigger_reg <= 0;
             axis_tvalid <= 0;
         end else begin
             if (m_axis_tvalid && m_axis_tready) begin

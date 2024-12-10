@@ -82,6 +82,9 @@ make_external {FIXED_IO, DDR}
 # ADC
 create_bd_cell -type module -reference axis_exp_adc adc
 
+# ADC Config
+create_bd_cell -type module -reference axi_exp_adc_cfg adc_cfg
+
 # AXIS clock converters
 # axis_exp_adc uses the SPI clock as its AXI clock source,
 # which is slower than the main AXI bus clock. A clock converter can
@@ -93,63 +96,50 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_clock_converter:1.1 clk_convert
 #set_property CONFIG.IS_ACLK_ASYNC.VALUE_SRC USER [get_bd_cells clk_converter_out]
 #set_property CONFIG.IS_ACLK_ASYNC {0} [get_bd_cells clk_converter_out]
 
-# AXI Hub
-create_bd_cell -type ip -vlnv pavel-demin:user:axi_hub:1.0 hub
-set_property CONFIG.CFG_DATA_WIDTH {96} [get_bd_cells hub]
-set_property CONFIG.STS_DATA_WIDTH {32} [get_bd_cells hub]
-
 # Config registers
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_adc
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_adc]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells reset_adc]
 set_property CONFIG.DIN_FROM {0} [get_bd_cells reset_adc]
 set_property CONFIG.DIN_TO {0} [get_bd_cells reset_adc]
 
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilvector_logic:1.0 reset_adc_logic
+set_property CONFIG.C_SIZE {1} [get_bd_cells reset_adc_logic]
+set_property CONFIG.C_OPERATION {and} [get_bd_cells reset_adc_logic]
+
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_packetizer
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_packetizer]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells reset_packetizer]
 set_property CONFIG.DIN_FROM {1} [get_bd_cells reset_packetizer]
 set_property CONFIG.DIN_TO {1} [get_bd_cells reset_packetizer]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 reset_dma
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells reset_dma]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells reset_dma]
 set_property CONFIG.DIN_FROM {2} [get_bd_cells reset_dma]
 set_property CONFIG.DIN_TO {2} [get_bd_cells reset_dma]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 ref_en
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells ref_en]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells ref_en]
 set_property CONFIG.DIN_FROM {3} [get_bd_cells ref_en]
 set_property CONFIG.DIN_TO {3} [get_bd_cells ref_en]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 pwr_en
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells pwr_en]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells pwr_en]
 set_property CONFIG.DIN_FROM {4} [get_bd_cells pwr_en]
 set_property CONFIG.DIN_TO {4} [get_bd_cells pwr_en]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 io_en
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells io_en]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells io_en]
 set_property CONFIG.DIN_FROM {5} [get_bd_cells io_en]
 set_property CONFIG.DIN_TO {5} [get_bd_cells io_en]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 diffamp_en
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells diffamp_en]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells diffamp_en]
 set_property CONFIG.DIN_FROM {6} [get_bd_cells diffamp_en]
 set_property CONFIG.DIN_TO {6} [get_bd_cells diffamp_en]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 opamp_en
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells opamp_en]
+set_property CONFIG.DIN_WIDTH {32} [get_bd_cells opamp_en]
 set_property CONFIG.DIN_FROM {7} [get_bd_cells opamp_en]
 set_property CONFIG.DIN_TO {7} [get_bd_cells opamp_en]
-
-create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 cfg_packetizer
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells cfg_packetizer]
-set_property CONFIG.DIN_FROM {95} [get_bd_cells cfg_packetizer]
-set_property CONFIG.DIN_TO {64} [get_bd_cells cfg_packetizer]
-set_property CONFIG.DOUT_WIDTH {32} [get_bd_cells cfg_packetizer]
-
-create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilslice:1.0 addr_dma
-set_property CONFIG.DIN_WIDTH {96} [get_bd_cells addr_dma]
-set_property CONFIG.DIN_FROM {63} [get_bd_cells addr_dma]
-set_property CONFIG.DIN_TO {32} [get_bd_cells addr_dma]
-set_property CONFIG.DOUT_WIDTH {32} [get_bd_cells addr_dma]
 
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconstant:1.0 cfg_dma
 set_property CONFIG.CONST_WIDTH {18} [get_bd_cells cfg_dma]
@@ -183,7 +173,7 @@ set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
 set spi_clk [get_bd_pins clk_wiz_0/clk_out2]
 set aresetn [get_bd_pins reset/peripheral_aresetn]
 set aresetn_spi [get_bd_pins reset_spi/peripheral_aresetn]
-set cfg_data [get_bd_pins hub/cfg_data]
+set cfg_data [get_bd_pins adc_cfg/cfg]
 # Clocks
 connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
 connect_bd_net [get_bd_ports adc_clk_n_i] [get_bd_pins clk_wiz_0/clk_in1_n]
@@ -211,7 +201,7 @@ connect_bd_net $aresetn [get_bd_pins adc_w_fifo/aresetn]
 connect_bd_net $ref_clk [get_bd_pins adc_w_fifo/aclk]
 connect_bd_net [get_bd_pins adc_w_fifo/write_count] [get_bd_pins concat_fifo_status/In0]
 connect_bd_net [get_bd_pins adc_w_fifo/read_count] [get_bd_pins concat_fifo_status/In1]
-connect_bd_net [get_bd_pins concat_fifo_status/dout] [get_bd_pins hub/sts_data]
+connect_bd_net [get_bd_pins concat_fifo_status/dout] [get_bd_pins adc_cfg/status]
 # AXIS clock converters
 connect_bd_intf_net [get_bd_intf_pins clk_converter_in/M_AXIS] [get_bd_intf_pins adc/s_axis]
 connect_bd_intf_net [get_bd_intf_pins adc/m_axis] [get_bd_intf_pins clk_converter_out/S_AXIS]
@@ -229,31 +219,37 @@ connect_bd_intf_net [get_bd_intf_pins packetizer/m_axis] [get_bd_intf_pins dma/s
 connect_bd_intf_net [get_bd_intf_pins dma/m_axi] [get_bd_intf_pins ps/S_AXI_ACP]
 connect_bd_net $ref_clk [get_bd_pins dma/aclk]
 connect_bd_net $ref_clk [get_bd_pins packetizer/aclk]
-# Hub
-connect_bd_intf_net [get_bd_intf_pins ps/M_AXI_GP0] [get_bd_intf_pins hub/s_axi]
-connect_bd_intf_net [get_bd_intf_pins hub/m00_axis] [get_bd_intf_pins adc_w_fifo/s_axis]
-connect_bd_net $ref_clk [get_bd_pins hub/aclk]
-connect_bd_net $aresetn [get_bd_pins hub/aresetn]
+# ADC Config
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {
+    Clk_master {$ref_clk}
+    Clk_slave {$ref_clk}
+    Clk_xbar {$ref_clk}
+    Master {/ps/M_AXI_GP0}
+    Slave {/adc_cfg/s_axi}
+    ddr_seg {Auto}
+    intc_ip {New AXI SmartConnect} master_apm {0}
+} [get_bd_intf_pins adc_cfg/s_axi]
+connect_bd_intf_net [get_bd_intf_pins adc_cfg/m_axis] [get_bd_intf_pins adc_w_fifo/s_axis]
+connect_bd_net [get_bd_pins adc_cfg/dma_cfg] [get_bd_pins dma/min_addr]
+connect_bd_net [get_bd_pins adc_cfg/packetizer_cfg] [get_bd_pins packetizer/cfg_data]
 # Registers
+connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]
 connect_bd_net $cfg_data [get_bd_pins reset_adc/din]
-connect_bd_net $cfg_data [get_bd_pins addr_dma/din]
 connect_bd_net $cfg_data [get_bd_pins reset_dma/din]
 connect_bd_net $cfg_data [get_bd_pins reset_packetizer/din]
-connect_bd_net $cfg_data [get_bd_pins cfg_packetizer/din]
 connect_bd_net $cfg_data [get_bd_pins pwr_en/din]
 connect_bd_net $cfg_data [get_bd_pins ref_en/din]
 connect_bd_net $cfg_data [get_bd_pins io_en/din]
 connect_bd_net $cfg_data [get_bd_pins diffamp_en/din]
 connect_bd_net $cfg_data [get_bd_pins opamp_en/din]
-connect_bd_net [get_bd_pins reset_adc/dout] [get_bd_pins adc/aresetn]
-connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]
-connect_bd_net [get_bd_pins addr_dma/dout] [get_bd_pins dma/min_addr]
+connect_bd_net [get_bd_pins reset_adc/dout] [get_bd_pins reset_adc_logic/Op1]
+connect_bd_net $aresetn_spi [get_bd_pins reset_adc_logic/Op2]
+connect_bd_net [get_bd_pins reset_adc_logic/Res] [get_bd_pins adc/aresetn]
 connect_bd_net [get_bd_pins reset_dma/dout] [get_bd_pins dma/aresetn]
 connect_bd_net [get_bd_pins reset_packetizer/dout] [get_bd_pins packetizer/aresetn]
-connect_bd_net [get_bd_pins cfg_packetizer/dout] [get_bd_pins packetizer/cfg_data]
+connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en_o]
 connect_bd_net [get_bd_pins ref_en/dout] [get_bd_ports exp_adc_ref_en_o]
 connect_bd_net [get_bd_pins io_en/dout] [get_bd_ports exp_adc_io_en_o]
-connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en_o]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en_o]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en_o]
 # LEDs

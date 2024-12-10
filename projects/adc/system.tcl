@@ -1,4 +1,5 @@
 add_files -norecurse library/spi/axis_exp_adc.v
+add_files -norecurse library/spi/axi_exp_adc_cfg.v
 add_files -fileset sim_1 -norecurse library/spi/axis_exp_adc_tb.sv
 
 # Ignore truncation of AXI Stream register to 24 bits
@@ -11,6 +12,6 @@ set_property top axis_exp_adc [current_fileset]
 update_compile_order -fileset sources_1
 source projects/adc/bd_adc.tcl
 
-assign_bd_address -target_address_space /ps/Data [get_bd_addr_segs hub/s_axi/reg0] -force
-set_property range 256M [get_bd_addr_segs {ps/Data/SEG_hub_reg0}]
+assign_bd_address -target_address_space /ps/Data [get_bd_addr_segs adc_cfg/s_axi/reg0] -force
+set_property range 512 [get_bd_addr_segs {ps/Data/SEG_adc_cfg_reg0}]
 
