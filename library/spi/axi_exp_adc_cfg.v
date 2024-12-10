@@ -5,6 +5,7 @@ module axi_exp_adc_cfg (
     output wire [31:0] dma_cfg,
     output wire [31:0] packetizer_cfg,
     input  wire [31:0] status,
+    output wire        trigger,
     // AXIS manager to ADC
     output wire [31:0] m_axis_tdata,
     output wire        m_axis_tvalid,
@@ -39,12 +40,16 @@ module axi_exp_adc_cfg (
     localparam reg [29:0] AddrDma = 30'h0000_000C;
     localparam reg [29:0] AddrPacketizer = 30'h0000_0010;
     localparam reg [29:0] AddrAxis = 30'h0000_0014;
+    localparam reg [29:0] AddrTrigger = 30'h0000_0018;
 
     reg [31:0] config_reg = 32'b0;
     reg [31:0] status_reg = 32'b0;
     reg [31:0] dma_cfg_reg = 32'b0;
     reg [31:0] packetizer_cfg_reg = 32'b0;
     reg [31:0] axis_reg = 32'b0;
+    reg [31:0] trigger_reg = 32'b0;
+
+    reg [31:0] counter = 32'b0;
 
     reg [31:0] axi_awaddr;
     reg axi_awready;
@@ -163,12 +168,14 @@ module axi_exp_adc_cfg (
         (axi_araddr[29:2] == AddrStatus[29:2]) ? status_reg :
         (axi_araddr[29:2] == AddrDma[29:2]) ? dma_cfg_reg :
         (axi_araddr[29:2] == AddrPacketizer[29:2]) ? packetizer_cfg_reg :
-        (axi_araddr[29:2] == AddrAxis[29:2]) ? axis_reg : 0;
+        (axi_araddr[29:2] == AddrAxis[29:2]) ? axis_reg :
+        (axi_araddr[29:2] == AddrTrigger[29:2]) ? trigger_reg : 0;
     assign s_axi_rresp = (axi_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
         (axi_araddr[29:2] == AddrStatus[29:2]) ? 2'b00 :
         (axi_araddr[29:2] == AddrDma[29:2]) ? 2'b00 :
         (axi_araddr[29:2] == AddrPacketizer[29:2]) ? 2'b00 :
-        (axi_araddr[29:2] == AddrAxis[29:2]) ? 2'b00 : 2'b10;
+        (axi_araddr[29:2] == AddrAxis[29:2]) ? 2'b00 :
+        (axi_araddr[29:2] == AddrTrigger[29:2]) ? 2'b00 : 2'b10;
 
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
@@ -217,6 +224,14 @@ module axi_exp_adc_cfg (
                         axi_bresp   <= 2'b00;
                         axis_tvalid <= 1;
                     end
+                    AddrTrigger[29:2]: begin
+                        for (byte_index = 0; byte_index < 4; byte_index = byte_index + 1) begin
+                            if (s_axi_wstrb[byte_index] == 1) begin
+                                trigger_reg[8*byte_index+:8] <= s_axi_wdata[8*byte_index+:8];
+                            end
+                        end
+                        axi_bresp <= 2'b00;
+                    end
                     default: axi_bresp <= 2'b10;
                 endcase
             end
@@ -224,4 +239,22 @@ module axi_exp_adc_cfg (
     end
     assign m_axis_tdata  = axis_reg;
     assign m_axis_tvalid = axis_tvalid & ~s_axi_wvalid;
+
+    // Logic for trigger output.
+    // By wrinting a value other than 0 to the trigger register
+    // (see 'AddrTrigger'), the trigger is pulsed for one
+    // clock cycle every (2^(trigger_reg)-1) clock cycles.
+    always @(posedge aclk or negedge aresetn) begin
+        if (!aresetn) begin
+            counter <= 32'b0;
+        end else if (trigger_reg != 32'b0) begin
+            if (trigger) begin
+                counter <= 1;
+            end
+            counter <= counter + 1;
+        end else begin
+            counter <= 32'b0;
+        end
+    end
+    assign trigger = (32'b1 << trigger_reg[4:0]) == counter;
 endmodule

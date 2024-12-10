@@ -232,6 +232,7 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {
 connect_bd_intf_net [get_bd_intf_pins adc_cfg/m_axis] [get_bd_intf_pins adc_w_fifo/s_axis]
 connect_bd_net [get_bd_pins adc_cfg/dma_cfg] [get_bd_pins dma/min_addr]
 connect_bd_net [get_bd_pins adc_cfg/packetizer_cfg] [get_bd_pins packetizer/cfg_data]
+connect_bd_net [get_bd_pins adc_cfg/trigger] [get_bd_pins adc/trigger]
 # Registers
 connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]
 connect_bd_net $cfg_data [get_bd_pins reset_adc/din]
@@ -254,8 +255,8 @@ connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en_o]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en_o]
 # LEDs
 connect_bd_net [get_bd_pins led_concat/dout] [get_bd_ports led_o]
-connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins led_concat/In0]
-connect_bd_net $aresetn [get_bd_pins led_concat/In1]
+connect_bd_net $aresetn [get_bd_pins led_concat/In0]
+connect_bd_net [get_bd_pins adc_cfg/trigger] [get_bd_pins led_concat/In1]
 connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_pins led_concat/In2]
 connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_pins led_concat/In3]
 connect_bd_net [get_bd_pins ref_en/dout] [get_bd_pins led_concat/In4]
