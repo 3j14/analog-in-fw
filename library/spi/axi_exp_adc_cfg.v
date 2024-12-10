@@ -42,12 +42,17 @@ module axi_exp_adc_cfg (
     localparam reg [29:0] AddrAxis = 30'h0000_0014;
     localparam reg [29:0] AddrTrigger = 30'h0000_0018;
 
-    reg [31:0] config_reg = 32'b0;
-    reg [31:0] status_reg = 32'b0;
-    reg [31:0] dma_cfg_reg = 32'b0;
-    reg [31:0] packetizer_cfg_reg = 32'b0;
-    reg [31:0] axis_reg = 32'b0;
-    reg [31:0] trigger_reg = 32'b0;
+    reg  [31:0] config_reg = 32'b0;
+    wire [31:0] status_reg;
+    reg  [31:0] dma_cfg_reg = 32'b0;
+    reg  [31:0] packetizer_cfg_reg = 32'b0;
+    reg  [31:0] axis_reg = 32'b0;
+    reg  [31:0] trigger_reg = 32'b0;
+
+    assign cfg = config_reg;
+    assign dma_cfg = dma_cfg_reg;
+    assign packetizer_cfg = packetizer_cfg_reg;
+    assign status_reg = status;
 
     reg [31:0] counter = 32'b0;
 
