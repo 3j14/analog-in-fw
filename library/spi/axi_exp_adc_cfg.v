@@ -54,8 +54,6 @@ module axi_exp_adc_cfg (
     assign packetizer_cfg = packetizer_cfg_reg;
     assign status_reg = status;
 
-    reg [31:0] counter = 32'b0;
-
     reg [31:0] axi_awaddr;
     reg axi_awready;
     reg axi_wready;
@@ -245,21 +243,10 @@ module axi_exp_adc_cfg (
     assign m_axis_tdata  = axis_reg;
     assign m_axis_tvalid = axis_tvalid & ~s_axi_wvalid;
 
-    // Logic for trigger output.
-    // By wrinting a value other than 0 to the trigger register
-    // (see 'AddrTrigger'), the trigger is pulsed for one
-    // clock cycle every (2^(trigger_reg)-1) clock cycles.
-    always @(posedge aclk or negedge aresetn) begin
-        if (!aresetn) begin
-            counter <= 32'b0;
-        end else if (trigger_reg != 32'b0) begin
-            if (trigger) begin
-                counter <= 1;
-            end
-            counter <= counter + 1;
-        end else begin
-            counter <= 32'b0;
-        end
-    end
-    assign trigger = (32'b1 << trigger_reg[4:0]) == counter;
+    trigger_control trigger_control_0 (
+        .clk(aclk),
+        .resetn(aresetn),
+        .divider(trigger_reg),
+        .trigger(trigger)
+    );
 endmodule
