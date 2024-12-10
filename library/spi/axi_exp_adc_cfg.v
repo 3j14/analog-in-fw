@@ -146,7 +146,7 @@ module axi_exp_adc_cfg (
                 end
                 StateRaddr: begin
                     if (s_axi_arvalid && s_axi_arready) begin
-                        axi_araddr  <= s_axi_awaddr;
+                        axi_araddr  <= s_axi_araddr;
                         axi_rvalid  <= 1;
                         axi_arready <= 1;
                         state_read  <= StateRdata;
