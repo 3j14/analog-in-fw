@@ -57,14 +57,15 @@ module axis_exp_adc #(
     // Output clock buffer with gated with clock-enable.
     // Either BUFHCE or BUFMRCE is needed for their synchronous
     // transition.
-    BUFHCE #(
-        .CE_TYPE ("SYNC"),
-        .INIT_OUT(0)
-    ) output_clk (
-        .O (spi_sck),
-        .CE(spi_sck_enable),
-        .I (aclk)
-    );
+    // BUFHCE #(
+    //     .CE_TYPE ("SYNC"),
+    //     .INIT_OUT(0)
+    // ) output_clk (
+    //     .O (spi_sck),
+    //     .CE(spi_sck_enable),
+    //     .I (aclk)
+    // );
+    assign spi_sck = aclk & spi_sck_enable & transaction_active;
 
     assign s_axis_tready = ~transaction_active & ~reg_available;
     assign spi_csn = ~transaction_active;

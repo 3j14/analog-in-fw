@@ -16,11 +16,13 @@ create_bd_port -dir I -from [expr $num_sdi-1] -to 0 exp_adc_sdi
 create_bd_port -dir I exp_adc_busy
 create_bd_port -dir O exp_adc_cnv
 # Enable pins
-create_bd_port -dir O exp_adc_ref_en_o
-create_bd_port -dir O exp_adc_io_en_o
-create_bd_port -dir O exp_adc_pwr_en_o
-create_bd_port -dir O exp_adc_diffamp_en_o
-create_bd_port -dir O exp_adc_opamp_en_o
+create_bd_port -dir O exp_adc_ref_en
+create_bd_port -dir O exp_adc_io_en
+create_bd_port -dir O exp_adc_pwr_en
+create_bd_port -dir O exp_adc_diffamp_en
+create_bd_port -dir O exp_adc_opamp_en
+# Debug pin
+create_bd_port -dir O exp_adc_debug
 # External clock (on Red Pitaya)
 create_bd_port -dir I adc_clk_p_i
 create_bd_port -dir I adc_clk_n_i
@@ -157,12 +159,12 @@ set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells dma]
 set_property CONFIG.FIFO_WRITE_DEPTH {1024} [get_bd_cells dma]
 
 # Fifo r/w counts
-create_bd_cell -type ip -vlnv pavel-demin:user:axis_fifo:1.0 adc_w_fifo
-create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 concat_fifo_status
-set_property -dict [list \
-  CONFIG.IN0_WIDTH {16} \
-  CONFIG.IN1_WIDTH {16} \
-] [get_bd_cells concat_fifo_status]
+#create_bd_cell -type ip -vlnv pavel-demin:user:axis_fifo:1.0 adc_w_fifo
+#create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 concat_fifo_status
+#set_property -dict [list \
+  #CONFIG.IN0_WIDTH {16} \
+  #CONFIG.IN1_WIDTH {16} \
+#] [get_bd_cells concat_fifo_status]
 
 # LED driver
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 led_concat
@@ -172,7 +174,7 @@ set_property CONFIG.NUM_PORTS {8} [get_bd_cells led_concat]
 set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
 set spi_clk [get_bd_pins clk_wiz_0/clk_out2]
 set aresetn [get_bd_pins reset/peripheral_aresetn]
-set aresetn_spi [get_bd_pins reset_spi/peripheral_aresetn]
+set aresetn_spi [get_bd_pins reset_adc_logic/Res]
 set cfg_data [get_bd_pins adc_cfg/cfg]
 # Clocks
 connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
@@ -196,12 +198,12 @@ connect_bd_net [get_bd_pins adc/spi_sdi] [get_bd_ports exp_adc_sdi]
 connect_bd_net [get_bd_pins adc/spi_sdo] [get_bd_ports exp_adc_sdo]
 connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_ports exp_adc_resetn]
 # Fifo
-connect_bd_intf_net [get_bd_intf_pins adc_w_fifo/m_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
-connect_bd_net $aresetn [get_bd_pins adc_w_fifo/aresetn]
-connect_bd_net $ref_clk [get_bd_pins adc_w_fifo/aclk]
-connect_bd_net [get_bd_pins adc_w_fifo/write_count] [get_bd_pins concat_fifo_status/In0]
-connect_bd_net [get_bd_pins adc_w_fifo/read_count] [get_bd_pins concat_fifo_status/In1]
-connect_bd_net [get_bd_pins concat_fifo_status/dout] [get_bd_pins adc_cfg/status]
+#connect_bd_intf_net [get_bd_intf_pins adc_w_fifo/m_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
+#connect_bd_net $aresetn [get_bd_pins adc_w_fifo/aresetn]
+#connect_bd_net $ref_clk [get_bd_pins adc_w_fifo/aclk]
+#connect_bd_net [get_bd_pins adc_w_fifo/write_count] [get_bd_pins concat_fifo_status/In0]
+#connect_bd_net [get_bd_pins adc_w_fifo/read_count] [get_bd_pins concat_fifo_status/In1]
+#connect_bd_net [get_bd_pins concat_fifo_status/dout] [get_bd_pins adc_cfg/status]
 # AXIS clock converters
 connect_bd_intf_net [get_bd_intf_pins clk_converter_in/M_AXIS] [get_bd_intf_pins adc/s_axis]
 connect_bd_intf_net [get_bd_intf_pins adc/m_axis] [get_bd_intf_pins clk_converter_out/S_AXIS]
@@ -229,10 +231,13 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config {
     ddr_seg {Auto}
     intc_ip {New AXI SmartConnect} master_apm {0}
 } [get_bd_intf_pins adc_cfg/s_axi]
-connect_bd_intf_net [get_bd_intf_pins adc_cfg/m_axis] [get_bd_intf_pins adc_w_fifo/s_axis]
+
+connect_bd_intf_net [get_bd_intf_pins adc_cfg/m_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
 connect_bd_net [get_bd_pins adc_cfg/dma_cfg] [get_bd_pins dma/min_addr]
 connect_bd_net [get_bd_pins adc_cfg/packetizer_cfg] [get_bd_pins packetizer/cfg_data]
 connect_bd_net [get_bd_pins adc_cfg/trigger] [get_bd_pins adc/trigger]
+connect_bd_net $spi_clk [get_bd_pins adc_cfg/adc_clk]
+connect_bd_net $aresetn_spi [get_bd_pins adc_cfg/adc_resetn]
 # Registers
 connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]
 connect_bd_net $cfg_data [get_bd_pins reset_adc/din]
@@ -244,15 +249,15 @@ connect_bd_net $cfg_data [get_bd_pins io_en/din]
 connect_bd_net $cfg_data [get_bd_pins diffamp_en/din]
 connect_bd_net $cfg_data [get_bd_pins opamp_en/din]
 connect_bd_net [get_bd_pins reset_adc/dout] [get_bd_pins reset_adc_logic/Op1]
-connect_bd_net $aresetn_spi [get_bd_pins reset_adc_logic/Op2]
+connect_bd_net [get_bd_pins reset_spi/peripheral_aresetn] [get_bd_pins reset_adc_logic/Op2]
 connect_bd_net [get_bd_pins reset_adc_logic/Res] [get_bd_pins adc/aresetn]
 connect_bd_net [get_bd_pins reset_dma/dout] [get_bd_pins dma/aresetn]
 connect_bd_net [get_bd_pins reset_packetizer/dout] [get_bd_pins packetizer/aresetn]
-connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en_o]
-connect_bd_net [get_bd_pins ref_en/dout] [get_bd_ports exp_adc_ref_en_o]
-connect_bd_net [get_bd_pins io_en/dout] [get_bd_ports exp_adc_io_en_o]
-connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en_o]
-connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en_o]
+connect_bd_net [get_bd_pins pwr_en/dout] [get_bd_ports exp_adc_pwr_en]
+connect_bd_net [get_bd_pins ref_en/dout] [get_bd_ports exp_adc_ref_en]
+connect_bd_net [get_bd_pins io_en/dout] [get_bd_ports exp_adc_io_en]
+connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_ports exp_adc_diffamp_en]
+connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_ports exp_adc_opamp_en]
 # LEDs
 connect_bd_net [get_bd_pins led_concat/dout] [get_bd_ports led_o]
 connect_bd_net $aresetn [get_bd_pins led_concat/In0]
@@ -263,5 +268,6 @@ connect_bd_net [get_bd_pins ref_en/dout] [get_bd_pins led_concat/In4]
 connect_bd_net [get_bd_pins io_en/dout] [get_bd_pins led_concat/In5]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_pins led_concat/In6]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_pins led_concat/In7]
-
+# Debug
+connect_bd_net [get_bd_pins adc_cfg/debug] [get_bd_ports exp_adc_debug]
 regenerate_bd_layout

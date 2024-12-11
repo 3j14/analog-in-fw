@@ -12,12 +12,8 @@ module trigger_control (
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             counter <= 32'b0;
-        end else if (divider != 32'b0) begin
-            if (trigger) begin
-                counter <= 0;
-            end else begin
-                counter <= counter + 1;
-            end
+        end else if (counter < divider && divider != 0) begin
+            counter <= counter + 1;
         end else begin
             counter <= 32'b0;
         end

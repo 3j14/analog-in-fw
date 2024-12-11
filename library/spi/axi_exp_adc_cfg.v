@@ -5,7 +5,10 @@ module axi_exp_adc_cfg (
     output wire [31:0] dma_cfg,
     output wire [31:0] packetizer_cfg,
     input  wire [31:0] status,
+    input  wire        adc_clk,
+    input  wire        adc_resetn,
     output wire        trigger,
+    output wire        debug,
     // AXIS manager to ADC
     output wire [31:0] m_axis_tdata,
     output wire        m_axis_tvalid,
@@ -189,7 +192,7 @@ module axi_exp_adc_cfg (
             trigger_reg <= 0;
             axis_tvalid <= 0;
         end else begin
-            if (m_axis_tvalid && m_axis_tready) begin
+            if (axis_tvalid && m_axis_tready) begin
                 axis_tvalid <= 0;
             end
             if (s_axi_wvalid) begin
@@ -240,12 +243,13 @@ module axi_exp_adc_cfg (
             end
         end
     end
-    assign m_axis_tdata  = axis_reg;
-    assign m_axis_tvalid = axis_tvalid & ~s_axi_wvalid;
+    assign m_axis_tdata = axis_reg;
+    assign m_axis_tvalid = axis_tvalid;
+    assign debug = axis_tvalid;
 
     trigger_control trigger_control_0 (
-        .clk(aclk),
-        .resetn(aresetn),
+        .clk(adc_clk),
+        .resetn(adc_resetn & aresetn),
         .divider(trigger_reg),
         .trigger(trigger)
     );

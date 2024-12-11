@@ -1,6 +1,8 @@
 add_files -norecurse library/spi/axis_exp_adc.v
 add_files -norecurse library/spi/axi_exp_adc_cfg.v
+add_files -norecurse library/spi/trigger_control.v
 add_files -fileset sim_1 -norecurse library/spi/axis_exp_adc_tb.sv
+add_files -fileset sim_1 -norecurse library/spi/trigger_control_tb.sv
 
 # Ignore truncation of AXI Stream register to 24 bits
 create_waiver -type LINT -id ASSIGN-10 -rtl_name {s_axis_tdata} -rtl_hierarchy {axis_exp_adc} -rtl_file {axis_exp_adc.v} -description {Ignore truncation of AXI Stream}
