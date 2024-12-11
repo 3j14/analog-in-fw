@@ -107,9 +107,11 @@ _bin_file="$BUILD_DIR/projects/$PROJECT_NAME/$PROJECT_NAME.bin"
 _dtbo_file="$BUILD_DIR/projects/$PROJECT_NAME/pl.dtbo"
 if [[ -f "$_bin_file" ]]; then
     sudo cp -- "$_bin_file" "$_firmware_dir"
+    sudo cp -- "$_bin_file" "$ROOT_DIR/root"
 fi
 if [[ -f "$_dtbo_file" ]]; then
     sudo cp -- "$_dtbo_file" "$_firmware_dir"
+    sudo cp -- "$_dtbo_file" "$ROOT_DIR/root"
 fi
 
 # Copy utilities
