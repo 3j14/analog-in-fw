@@ -8,7 +8,6 @@ module axi_exp_adc_cfg (
     input  wire        adc_clk,
     input  wire        adc_resetn,
     output wire        trigger,
-    output wire        debug,
     // AXIS manager to ADC
     output wire [31:0] m_axis_tdata,
     output wire        m_axis_tvalid,
@@ -243,9 +242,8 @@ module axi_exp_adc_cfg (
             end
         end
     end
-    assign m_axis_tdata = axis_reg;
+    assign m_axis_tdata  = axis_reg;
     assign m_axis_tvalid = axis_tvalid;
-    assign debug = axis_tvalid;
 
     trigger_control trigger_control_0 (
         .clk(adc_clk),
