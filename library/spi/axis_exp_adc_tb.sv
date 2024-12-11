@@ -141,6 +141,8 @@ module axis_exp_adc_tb #(
     // Received register command on ADC
     reg [23:0] reg_command_received;
 
+    wire [31:0] status;
+
     exp_adc_impl adc (
         .cnv(cnv),
         .busy(busy),
@@ -169,7 +171,8 @@ module axis_exp_adc_tb #(
         .s_axis_tready(m_axis_tready),
         .m_axis_tdata(s_axis_tdata),
         .m_axis_tvalid(s_axis_tvalid),
-        .m_axis_tready(s_axis_tready)
+        .m_axis_tready(s_axis_tready),
+        .status(status),
     );
 
     always #(Period) clk <= ~clk;

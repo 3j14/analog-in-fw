@@ -20,7 +20,9 @@ module axis_exp_adc #(
     // AXI Stream output (conversion data)
     output wire [32-1:0] m_axis_tdata,
     output reg m_axis_tvalid = 0,
-    input wire m_axis_tready
+    input wire m_axis_tready,
+    // Status
+    output wire [32-1:0] status
 );
     localparam integer DataWidth = 32;
     assign spi_resetn = aresetn;
@@ -57,18 +59,23 @@ module axis_exp_adc #(
     // Output clock buffer with gated with clock-enable.
     // Either BUFHCE or BUFMRCE is needed for their synchronous
     // transition.
-    // BUFHCE #(
-    //     .CE_TYPE ("SYNC"),
-    //     .INIT_OUT(0)
-    // ) output_clk (
-    //     .O (spi_sck),
-    //     .CE(spi_sck_enable),
-    //     .I (aclk)
-    // );
-    assign spi_sck = aclk & spi_sck_enable & transaction_active;
+    BUFHCE #(
+        .CE_TYPE ("SYNC"),
+        .INIT_OUT(0)
+    ) output_clk (
+        .O (spi_sck),
+        .CE(spi_sck_enable),
+        .I (aclk)
+    );
 
     assign s_axis_tready = ~transaction_active & ~reg_available;
     assign spi_csn = ~transaction_active;
+
+    assign status[0] = transaction_active;
+    assign status[1] = reg_available;
+    assign status[3:2] = device_mode;
+    assign status[7:4] = 0;
+    assign status[31:8] = reg_data;
 
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin

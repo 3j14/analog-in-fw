@@ -197,6 +197,7 @@ connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc/spi_csn]
 connect_bd_net [get_bd_pins adc/spi_sdi] [get_bd_ports exp_adc_sdi]
 connect_bd_net [get_bd_pins adc/spi_sdo] [get_bd_ports exp_adc_sdo]
 connect_bd_net [get_bd_pins adc/spi_resetn] [get_bd_ports exp_adc_resetn]
+connect_bd_net [get_bd_pins adc/status] [get_bd_pins adc_cfg/status]
 # Fifo
 #connect_bd_intf_net [get_bd_intf_pins adc_w_fifo/m_axis] [get_bd_intf_pins clk_converter_in/S_AXIS]
 #connect_bd_net $aresetn [get_bd_pins adc_w_fifo/aresetn]
@@ -268,6 +269,4 @@ connect_bd_net [get_bd_pins ref_en/dout] [get_bd_pins led_concat/In4]
 connect_bd_net [get_bd_pins io_en/dout] [get_bd_pins led_concat/In5]
 connect_bd_net [get_bd_pins diffamp_en/dout] [get_bd_pins led_concat/In6]
 connect_bd_net [get_bd_pins opamp_en/dout] [get_bd_pins led_concat/In7]
-# Debug
-connect_bd_net [get_bd_pins adc_cfg/debug] [get_bd_ports exp_adc_debug]
 regenerate_bd_layout
