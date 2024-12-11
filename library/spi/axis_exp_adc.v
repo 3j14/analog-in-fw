@@ -81,80 +81,82 @@ module axis_exp_adc #(
             m_axis_tvalid <= 0;
             device_mode <= Conversion;
             reg_available <= 0;
-        end else if (~transaction_active) begin
-            if (device_mode == Conversion && trigger) begin
-                transaction_active <= 1;
-                spi_sck_enable <= 1;
-                spi_sdo <= 0;
-                m_axis_tvalid <= 0;
-                data_idx <= MaxIdxCnv[IdxDataSize-1:0];
-                cnv_data <= 0;
-            end else if (reg_available) begin
-                transaction_active <= 1;
-                spi_sck_enable <= 1;
-                spi_sdo <= 0;
-                data_idx <= MaxIdxReg[IdxDataSize-1:0];
-                spi_sdo <= reg_data[MaxIdxReg-1];
-                reg_available <= 0;
-            end
         end else begin
-            if (data_idx == 0) begin
-                transaction_active <= 0;
-                spi_sck_enable <= 0;
-                data_idx <= 0;
-                if (device_mode == Conversion) begin
-                    m_axis_tvalid <= 1;
-                end else begin
-                    if (reg_data[23:21] == 3'b101) begin
-                        device_mode <= RegAccess;
-                    end else if (reg_data == ExitReg || device_mode == RegAccessOnce) begin
-                        device_mode <= Conversion;
-                    end
-                end
-            end else begin
-                if (data_idx - 1 == 0) begin
-                    // Clock has to be disabled one cycle in advance as it
-                    // is synchronous with aclk.
-                    spi_sck_enable <= 0;
-                end
-                if (device_mode == Conversion) begin
-                    // Get data from SPI data in.
-                    // Consider the following initial state:
-                    //
-                    // spi_data_in: 8'b01101010
-                    // spi_sdo: 4'b1011
-                    // DataWidth = 8, NUM_SDI = 4.
-                    //
-                    // Then, the concatenation looks as follows:
-                    // {4'b1010, 4'b1011} == 8'b10101011
-                    //
-                    // The 'NUM_SDI' least significant bits of 'spi_data_in'
-                    // are dropped and 'spi_sdo' is added to the most
-                    // significant bits on the right.
-                    cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
-                end else begin
-                    // NOTE: Because the first bit is already shifted out
-                    // at the falling edge of CSn, we have to shift out the
-                    // bits offset by 1 with respect to the index.
-                    // The last cycle can be skipped and the output set to 0.
-                    if (data_idx - 1 == 0) begin
-                        spi_sdo <= 0;
-                    end else begin
-                        spi_sdo <= reg_data[data_idx-2];
-                    end
-                    // TODO: There is currently no way of reading the
-                    // returned registers.
-                end
-                data_idx <= data_idx - 1;
-            end
-            if (m_axis_tvalid & m_axis_tready) begin
+            if (m_axis_tvalid && m_axis_tready) begin
                 m_axis_tvalid <= 0;
             end
-            if (s_axis_tvalid & s_axis_tready) begin
+            if (s_axis_tvalid && s_axis_tready) begin
                 reg_data <= s_axis_tdata[23:0];
                 reg_available <= 1;
                 if (device_mode != RegAccess) begin
                     device_mode <= RegAccessOnce;
+                end
+            end
+            if (~transaction_active) begin
+                if (device_mode == Conversion && trigger) begin
+                    transaction_active <= 1;
+                    spi_sck_enable <= 1;
+                    spi_sdo <= 0;
+                    m_axis_tvalid <= 0;
+                    data_idx <= MaxIdxCnv[IdxDataSize-1:0];
+                    cnv_data <= 0;
+                end else if (reg_available) begin
+                    transaction_active <= 1;
+                    spi_sck_enable <= 1;
+                    spi_sdo <= 0;
+                    data_idx <= MaxIdxReg[IdxDataSize-1:0];
+                    spi_sdo <= reg_data[MaxIdxReg-1];
+                    reg_available <= 0;
+                end
+            end else begin
+                if (data_idx == 0) begin
+                    transaction_active <= 0;
+                    spi_sck_enable <= 0;
+                    data_idx <= 0;
+                    if (device_mode == Conversion) begin
+                        m_axis_tvalid <= 1;
+                    end else begin
+                        if (reg_data[23:21] == 3'b101) begin
+                            device_mode <= RegAccess;
+                        end else if (reg_data == ExitReg || device_mode == RegAccessOnce) begin
+                            device_mode <= Conversion;
+                        end
+                    end
+                end else begin
+                    if (data_idx - 1 == 0) begin
+                        // Clock has to be disabled one cycle in advance as it
+                        // is synchronous with aclk.
+                        spi_sck_enable <= 0;
+                    end
+                    if (device_mode == Conversion) begin
+                        // Get data from SPI data in.
+                        // Consider the following initial state:
+                        //
+                        // spi_data_in: 8'b01101010
+                        // spi_sdo: 4'b1011
+                        // DataWidth = 8, NUM_SDI = 4.
+                        //
+                        // Then, the concatenation looks as follows:
+                        // {4'b1010, 4'b1011} == 8'b10101011
+                        //
+                        // The 'NUM_SDI' least significant bits of 'spi_data_in'
+                        // are dropped and 'spi_sdo' is added to the most
+                        // significant bits on the right.
+                        cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
+                    end else begin
+                        // NOTE: Because the first bit is already shifted out
+                        // at the falling edge of CSn, we have to shift out the
+                        // bits offset by 1 with respect to the index.
+                        // The last cycle can be skipped and the output set to 0.
+                        if (data_idx - 1 == 0) begin
+                            spi_sdo <= 0;
+                        end else begin
+                            spi_sdo <= reg_data[data_idx-2];
+                        end
+                        // TODO: There is currently no way of reading the
+                        // returned registers.
+                    end
+                    data_idx <= data_idx - 1;
                 end
             end
         end
