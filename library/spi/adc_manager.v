@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module axis_exp_adc #(
+module adc_manager #(
     parameter integer NUM_SDI = 4
 ) (
     input wire aclk,

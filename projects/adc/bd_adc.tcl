@@ -2,7 +2,7 @@ create_bd_design bd_${name}
 
 set adc_clk_in_freq 125.0
 set ref_clk_freq 125.0
-set spi_clk_freq 50.0
+set adc_clk_freq 50.0
 set sampling_rate 1.0
 set num_sdi 4
 
@@ -56,7 +56,7 @@ set_property -dict [list \
     CONFIG.CLKOUT1_SEQUENCE_NUMBER {2} \
     CONFIG.CLKOUT1_DRIVES {BUFGCE} \
     CONFIG.CLKOUT2_USED {true} \
-    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $spi_clk_freq \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $adc_clk_freq \
     CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {25} \
     CONFIG.CLKOUT2_SEQUENCE_NUMBER {1} \
     CONFIG.CLKOUT2_DRIVES {BUFGCE} \
@@ -82,7 +82,7 @@ make_external {FIXED_IO, DDR}
 } [get_bd_cells ps]
 
 # ADC
-create_bd_cell -type module -reference axis_exp_adc adc
+create_bd_cell -type module -reference adc_manager adc
 
 # ADC Config
 create_bd_cell -type module -reference adc_config adc_cfg
@@ -158,21 +158,13 @@ set_property CONFIG.AXI_ID_WIDTH {3} [get_bd_cells dma]
 set_property CONFIG.AXIS_TDATA_WIDTH {32} [get_bd_cells dma]
 set_property CONFIG.FIFO_WRITE_DEPTH {1024} [get_bd_cells dma]
 
-# Fifo r/w counts
-#create_bd_cell -type ip -vlnv pavel-demin:user:axis_fifo:1.0 adc_w_fifo
-#create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 concat_fifo_status
-#set_property -dict [list \
-  #CONFIG.IN0_WIDTH {16} \
-  #CONFIG.IN1_WIDTH {16} \
-#] [get_bd_cells concat_fifo_status]
-
 # LED driver
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilconcat:1.0 led_concat
 set_property CONFIG.NUM_PORTS {8} [get_bd_cells led_concat]
 
 # Connections
 set ref_clk [get_bd_pins clk_wiz_0/clk_out1]
-set spi_clk [get_bd_pins clk_wiz_0/clk_out2]
+set adc_clk [get_bd_pins clk_wiz_0/clk_out2]
 set aresetn [get_bd_pins reset/peripheral_aresetn]
 set aresetn_spi [get_bd_pins reset_adc_logic/Res]
 set cfg_data [get_bd_pins adc_cfg/cfg]
@@ -181,8 +173,8 @@ connect_bd_net [get_bd_ports adc_clk_p_i] [get_bd_pins clk_wiz_0/clk_in1_p]
 connect_bd_net [get_bd_ports adc_clk_n_i] [get_bd_pins clk_wiz_0/clk_in1_n]
 # Reset
 connect_bd_net $ref_clk [get_bd_pins reset/slowest_sync_clk]
-connect_bd_net $spi_clk [get_bd_pins reset_spi/slowest_sync_clk]
-set_property name spi_clk [get_bd_nets -of $spi_clk]
+connect_bd_net $adc_clk [get_bd_pins reset_spi/slowest_sync_clk]
+set_property name adc_clk [get_bd_nets -of $adc_clk]
 connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins reset/ext_reset_in]
 connect_bd_net [get_bd_pins VCC_0/dout] [get_bd_pins reset_spi/ext_reset_in]
 connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins reset/dcm_locked]
@@ -191,7 +183,7 @@ connect_bd_net [get_bd_pins clk_wiz_0/locked] [get_bd_pins reset_spi/dcm_locked]
 connect_bd_net $ref_clk [get_bd_pins ps/M_AXI_GP0_ACLK]
 connect_bd_net $ref_clk [get_bd_pins ps/S_AXI_ACP_ACLK]
 # ADC
-connect_bd_net $spi_clk [get_bd_pins adc/aclk]
+connect_bd_net $adc_clk [get_bd_pins adc/aclk]
 connect_bd_net [get_bd_pins adc/spi_sck] [get_bd_ports exp_adc_sck]
 connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc/spi_csn]
 connect_bd_net [get_bd_pins adc/spi_sdi] [get_bd_ports exp_adc_sdi]
@@ -208,10 +200,10 @@ connect_bd_net [get_bd_pins adc/status] [get_bd_pins adc_cfg/status]
 # AXIS clock converters
 connect_bd_intf_net [get_bd_intf_pins clk_converter_in/M_AXIS] [get_bd_intf_pins adc/s_axis]
 connect_bd_intf_net [get_bd_intf_pins adc/m_axis] [get_bd_intf_pins clk_converter_out/S_AXIS]
-connect_bd_net $spi_clk [get_bd_pins clk_converter_in/m_axis_aclk]
+connect_bd_net $adc_clk [get_bd_pins clk_converter_in/m_axis_aclk]
 connect_bd_net $ref_clk [get_bd_pins clk_converter_in/s_axis_aclk]
 connect_bd_net $ref_clk [get_bd_pins clk_converter_out/m_axis_aclk]
-connect_bd_net $spi_clk [get_bd_pins clk_converter_out/s_axis_aclk]
+connect_bd_net $adc_clk [get_bd_pins clk_converter_out/s_axis_aclk]
 connect_bd_net $aresetn_spi [get_bd_pins clk_converter_in/m_axis_aresetn]
 connect_bd_net $aresetn [get_bd_pins clk_converter_in/s_axis_aresetn]
 connect_bd_net $aresetn [get_bd_pins clk_converter_out/m_axis_aresetn]
@@ -237,7 +229,7 @@ connect_bd_intf_net [get_bd_intf_pins adc_cfg/m_axis] [get_bd_intf_pins clk_conv
 connect_bd_net [get_bd_pins adc_cfg/dma_cfg] [get_bd_pins dma/min_addr]
 connect_bd_net [get_bd_pins adc_cfg/packetizer_cfg] [get_bd_pins packetizer/cfg_data]
 connect_bd_net [get_bd_pins adc_cfg/trigger] [get_bd_pins adc/trigger]
-connect_bd_net $spi_clk [get_bd_pins adc_cfg/adc_clk]
+connect_bd_net $adc_clk [get_bd_pins adc_cfg/adc_clk]
 connect_bd_net $aresetn_spi [get_bd_pins adc_cfg/adc_resetn]
 # Registers
 connect_bd_net [get_bd_pins cfg_dma/dout] [get_bd_pins dma/cfg_data]

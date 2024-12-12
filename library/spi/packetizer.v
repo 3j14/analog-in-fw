@@ -55,9 +55,8 @@ module packetizer (
 
     // Internal register for storing data recieved on the AXI
     // subordinates.
-    reg [31:0] data_reg;
-    reg [31:0] config_reg;
-    reg [31:0] counter = 32'b0;
+    reg  [31:0] config_reg;
+    wire [31:0] counter;
 
     // AXI4-Lite state machine and registers
     localparam reg [1:0] StateIdle = 2'b00;
@@ -135,7 +134,7 @@ module packetizer (
                         if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                     end
                 end
-                default: state_read <= StateIdle;
+                default: state_write <= StateIdle;
             endcase
         end
     end
@@ -145,7 +144,7 @@ module packetizer (
         if (!aresetn) begin
             axi_lite_arready <= 0;
             axi_lite_rvalid <= 0;
-            axi_lite_rresp <= 0;
+            axi_lite_araddr <= 0;
             state_read <= StateIdle;
         end else begin
             case (state_read)
@@ -182,6 +181,7 @@ module packetizer (
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
             config_reg <= 0;
+            axi_lite_bresp <= 2'b00;
         end else begin
             if (s_axi_lite_wvalid) begin
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
@@ -198,25 +198,74 @@ module packetizer (
         end
     end
 
+    packetizer_s2mm s2mm (
+        .aclk(aclk),
+        .aresetn(aresetn),
+        .s_axis_data_tdata(s_axis_data_tdata),
+        .s_axis_data_tvalid(s_axis_data_tvalid),
+        .s_axis_data_tready(s_axis_data_tready),
+        // AXI-Stream (S2MM) data manager
+        .m_axis_s2mm_tdata(m_axis_s2mm_tdata),
+        .m_axis_s2mm_tvalid(m_axis_s2mm_tvalid),
+        .m_axis_s2mm_tready(m_axis_s2mm_tready),
+        .m_axis_s2mm_tlast(m_axis_s2mm_tlast),
+        // Other
+        .config_reg(config_reg),
+        .counter(counter)
+    );
+    assign last = m_axis_s2mm_tlast;
+endmodule
+
+module packetizer_s2mm (
+    input  wire        aclk,
+    input  wire        aresetn,
+    // AXI-Stream data subordinate
+    input  wire [31:0] s_axis_data_tdata,
+    input  wire        s_axis_data_tvalid,
+    output wire        s_axis_data_tready,
+    // AXI-Stream (S2MM) data manager
+    output wire [31:0] m_axis_s2mm_tdata,
+    output wire        m_axis_s2mm_tvalid,
+    input  wire        m_axis_s2mm_tready,
+    output wire        m_axis_s2mm_tlast,
+    // Other
+    input  wire [31:0] config_reg,
+    output reg  [31:0] counter = 32'b0
+);
     // AXI-Stream to AXI S2MM
-    // Ready to recieve data if downstream DMA is redy and config_reg is not 0
+    // Ready to receive data if downstream DMA is redy and config_reg is not 0
     assign s_axis_data_tready = m_axis_s2mm_tready & (|config_reg);
     // Last if config_reg not 0, tvalid is asserted high,
     // and config_reg is equal to counter.
     assign m_axis_s2mm_tlast = |config_reg & m_axis_s2mm_tvalid & (config_reg == counter);
     assign last = m_axis_s2mm_tlast;
     // Data is valid if config_reg not zero,
-    // and upsteream data input is also valid.
+    // and upstream data input is also valid.
     assign m_axis_s2mm_tvalid = |config_reg & s_axis_data_tvalid;
+    // Funnel the data through the module.
+    //
+    // Note: If the upstream manager provides data (s_axis_data_tvalid
+    // goes high), the data will stay valid until the downstream
+    // subordinate asserts tready to high (m_axis_s2mm_tready). If the
+    // 'config_reg' is set to 0, this will not propagate to the manager
+    // and the data will stay valid until all conditions are met.
+    //
+    // There is no situation where the subordinate has tvalid and tready
+    // asserted to high while the data is not valid.
+    assign m_axis_s2mm_tdata = s_axis_data_tdata;
 
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
             counter <= 0;
+            outstanding_write <= 0;
         end else begin
-            if (config_reg == 32'b0 || counter == config_reg) begin
-                counter <= 0;
-            end else begin
-                counter <= counter + 1;
+            if (m_axis_s2mm_tvalid && m_axis_s2mm_tready) begin
+                // Transfer has been performed
+                if (config_reg == 32'b0 || counter == config_reg) begin
+                    counter <= 0;
+                end else begin
+                    counter <= counter + 1;
+                end
             end
         end
     end

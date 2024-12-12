@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module trigger_control_tb #(
+module adc_trigger_tb #(
     parameter real CLK_FREQ = 125.0
 );
     localparam integer Period = $rtoi(1_000.0 / (2.0 * CLK_FREQ));
@@ -10,7 +10,7 @@ module trigger_control_tb #(
     reg [31:0] divider = 0;
     bit trigger;
 
-    trigger_control dut (
+    adc_trigger_impl dut (
         .clk(clk),
         .resetn(resetn),
         .divider(divider),

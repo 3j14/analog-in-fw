@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 
-module exp_adc_impl #(
+module adc_impl #(
     parameter integer CNV_TIME = 282
 ) (
     input  wire cnv,
@@ -98,7 +98,7 @@ module exp_adc_impl #(
     end
 endmodule
 
-module axis_exp_adc_tb #(
+module adc_manager_tb #(
     parameter unsigned NUM_SDI = 4,
     parameter unsigned DATA_WIDTH = 32,
     // clock frequency in MHz
@@ -143,7 +143,7 @@ module axis_exp_adc_tb #(
 
     wire [31:0] status;
 
-    exp_adc_impl adc (
+    adc_impl adc (
         .cnv(cnv),
         .busy(busy),
         .sck(sck),
@@ -155,7 +155,7 @@ module axis_exp_adc_tb #(
         .reg_command(reg_command_received)
     );
 
-    axis_exp_adc #(
+    adc_manager #(
         .NUM_SDI(NUM_SDI)
     ) dut (
         .aclk(clk),
