@@ -85,7 +85,7 @@ make_external {FIXED_IO, DDR}
 create_bd_cell -type module -reference axis_exp_adc adc
 
 # ADC Config
-create_bd_cell -type module -reference axi_exp_adc_cfg adc_cfg
+create_bd_cell -type module -reference adc_config adc_cfg
 
 # AXIS clock converters
 # axis_exp_adc uses the SPI clock as its AXI clock source,

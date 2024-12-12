@@ -1,5 +1,6 @@
+add_files -norecurse library/spi/axis4lite_helpers.v
 add_files -norecurse library/spi/axis_exp_adc.v
-add_files -norecurse library/spi/axi_exp_adc_cfg.v
+add_files -norecurse library/spi/adc_config.v
 add_files -norecurse library/spi/trigger_control.v
 add_files -fileset sim_1 -norecurse library/spi/axis_exp_adc_tb.sv
 add_files -fileset sim_1 -norecurse library/spi/trigger_control_tb.sv
