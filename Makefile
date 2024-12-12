@@ -73,8 +73,8 @@ RPN_CORE_FILES := $(wildcard $(RPN_DIR)/cores/*.v)
 RPN_CORES := $(basename $(notdir $(RPN_CORE_FILES)))
 RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
 
-HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv)
-HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv)
+HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv | sort)
+HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv | sort)
 
 DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
 DTS_SOURCES += $(wildcard dts/*.dts)
