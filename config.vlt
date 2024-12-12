@@ -1,6 +1,8 @@
 `verilator_config
 lint_off -rule MULTITOP
+lint_off -rule MODDUP
 lint_off -file "/usr/share/yosys/xilinx/cells_sim.v"
+lint_off -rule TIMESCALEMOD -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule MULTIDRIVEN -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule COMBDLY -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule LATCH -file "/usr/share/yosys/xilinx/cells_sim.v"
@@ -9,3 +11,14 @@ lint_off -rule WIDTHEXPAND -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule WIDTHTRUNC -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule MULTITOP -file "/usr/share/yosys/xilinx/cells_sim.v"
 lint_off -rule UNOPTFLAT -file "/usr/share/yosys/xilinx/cells_sim.v"
+// macOS specific
+lint_off -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule TIMESCALEMOD -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule MULTIDRIVEN -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule COMBDLY -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule LATCH -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule INITIALDLY -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule WIDTHEXPAND -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule WIDTHTRUNC -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule MULTITOP -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"
+lint_off -rule UNOPTFLAT -file "/opt/homebrew/share/yosys/xilinx/cells_sim.v"

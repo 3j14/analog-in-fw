@@ -1,0 +1,39 @@
+name: Test HDL
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Avoid multiple tests running on the same reference
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verilator-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone yosys repo for simulation sources
+        uses: actions/checkout@v4
+        with:
+          repository: YosysHQ/yosys
+          path: ./yosys
+          ref: main
+          sparse-checkout: techlibs/xilinx/cells_sim.v
+
+      - name: Copy cells_sim.v to /usr/share/yosys/xilinx/
+        run: |
+          sudo mkdir -p /usr/share/yosys/xilinx
+          sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
+
+      - name: Install verilator and make
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install verilator make
+
+      - name: Run tests
+        run: make test
+

@@ -75,6 +75,8 @@ RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
 
 HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv | sort)
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv | sort)
+HDL_INCLUDE_DIRS := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv -exec dirname "{}" \; | sort -u) 
+HDL_INCLUDES := $(addprefix -I,$(HDL_INCLUDE_DIRS))
 
 DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
 DTS_SOURCES += $(wildcard dts/*.dts)
@@ -100,6 +102,14 @@ SOURCES += $(RPN_CORES_BUILD_DIRS)
 endif
 
 EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	YOSYS_SIM := /usr/share/yosys/xilinx/cells_sim.v
+endif
+ifeq ($(UNAME_S),Darwin)
+	YOSYS_SIM := /opt/homebrew/share/yosys/xilinx/cells_sim.v
+endif
 
 define bootbif
 // arch = zynq; split = false; format = BIN
@@ -272,9 +282,13 @@ $(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
-	verilator config.vlt $(HDL_FILES) /usr/share/yosys/xilinx/cells_sim.v --lint-only --timing
+	verilator config.vlt $(HDL_INCLUDES) $(HDL_FILES) $(YOSYS_SIM) --lint-only --timing
 
 .PHONY: verible-lint
 verible-lint: $(HDL_FILES)
 	verible-verilog-lint $(HDL_FILES)
+
+.PHONY: test
+test:
+	scripts/test.sh
 
