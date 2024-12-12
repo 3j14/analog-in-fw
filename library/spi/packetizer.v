@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "axi4lite_helpers.v"
 
 module packetizer (
     input  wire        aclk,
@@ -237,8 +238,7 @@ module packetizer_s2mm (
     assign s_axis_data_tready = m_axis_s2mm_tready & (|config_reg);
     // Last if config_reg not 0, tvalid is asserted high,
     // and config_reg is equal to counter.
-    assign m_axis_s2mm_tlast = |config_reg & m_axis_s2mm_tvalid & (config_reg == counter);
-    assign last = m_axis_s2mm_tlast;
+    assign m_axis_s2mm_tlast  = |config_reg & m_axis_s2mm_tvalid & (config_reg == counter);
     // Data is valid if config_reg not zero,
     // and upstream data input is also valid.
     assign m_axis_s2mm_tvalid = |config_reg & s_axis_data_tvalid;
@@ -252,12 +252,11 @@ module packetizer_s2mm (
     //
     // There is no situation where the subordinate has tvalid and tready
     // asserted to high while the data is not valid.
-    assign m_axis_s2mm_tdata = s_axis_data_tdata;
+    assign m_axis_s2mm_tdata  = s_axis_data_tdata;
 
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
             counter <= 0;
-            outstanding_write <= 0;
         end else begin
             if (m_axis_s2mm_tvalid && m_axis_s2mm_tready) begin
                 // Transfer has been performed

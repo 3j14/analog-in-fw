@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "adc_trigger.v"
 
 module adc_trigger_tb #(
     parameter real CLK_FREQ = 125.0
@@ -22,6 +23,7 @@ module adc_trigger_tb #(
     initial begin
         #(4 * Period) @(posedge clk) resetn = 1;
         #(10 * Period) @(posedge clk) divider = 10;
+        $finish();
     end
 
 endmodule

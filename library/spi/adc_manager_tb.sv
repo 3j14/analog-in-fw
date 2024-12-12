@@ -208,23 +208,26 @@ module adc_manager_tb #(
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
         @(posedge m_axis_tready)
-        assert (reg_command_received == {1'b1, 15'h0014, 8'b00000001})
+        if (reg_command_received == {1'b1, 15'h0014, 8'b00000001}) begin
             $display("Device configured");
-        else $error("Register received does not match");
+        end else $error("Register received does not match");
 
         #(4 * Period);
         @(posedge clk) cnv_clk_en = 1;
         @(posedge clk) s_axis_tready = 1;
 
         @(negedge s_axis_tvalid)
-        assert (axis_data_received == test_pattern) $display("Test pattern received from ADC");
-        else $error("Received invalid data");
+        if (axis_data_received == test_pattern) begin
+            $display("Test pattern received from ADC");
+        end else $error("Received invalid data");
 
         // Try again with different test pattern
         #(4 * Period) test_pattern = 32'h23ff42;
         @(negedge s_axis_tvalid)
-        assert (axis_data_received == test_pattern) $display("Test pattern received from ADC");
-        else $error("Received invalid data");
+        if (axis_data_received == test_pattern) begin
+            $display("Test pattern received from ADC");
+        end else $error("Received invalid data");
+        $finish();
     end
 
 endmodule

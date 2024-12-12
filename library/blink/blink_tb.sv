@@ -17,5 +17,6 @@ module blink_tb;
         clk = 0;
         rst = 1;
         #10 rst = 0;
+        $finish();
     end
 endmodule
