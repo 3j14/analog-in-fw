@@ -6,6 +6,7 @@ module adc_trigger (
     output wire        trigger,
     output wire        cnv,
     input  wire        busy,
+    input  wire        last,
     // AXI4-Lite subordinate
     input  wire [31:0] s_axi_lite_awaddr,
     input  wire [ 2:0] s_axi_lite_awprot,
@@ -32,19 +33,31 @@ module adc_trigger (
     input  wire        s_axi_lite_rready
 );
     `include "axi4lite_helpers.vh"
-    localparam reg [29:0] AddrTrigger = 30'h0000_0018;
+    // Address configuration:
+    //  - Config register:
+    //      Base address: 0x?000_0100, 32bit large.
+    //      If least significant bit is 1, the trigger
+    //      will run continuously, not stopping when one
+    //      complete DMA transaction is made. If 0, the
+    //      trigger will stop as soon as the first
+    //      transaction is completed.
+    //      Write 1 to the second bit to start the next
+    //      transaction (only if first bit is 0).
+    localparam reg [29:0] AddrConfig = 30'h0000_0100;
+    localparam reg [29:0] AddrDivider = 30'h0000_0104;
 
-    reg [31:0] trigger_reg = 32'b0;
+    reg [31:0] divider_reg = 32'b0;
+    reg [31:0] config_reg = 32'b0;
 
     reg [31:0] axi_lite_awaddr;
-    reg axi_lite_awready;
-    reg axi_lite_wready;
-    reg [1:0] axi_lite_bresp;
-    reg axi_lite_bvalid;
+    reg        axi_lite_awready;
+    reg        axi_lite_wready;
+    reg [ 1:0] axi_lite_bresp;
+    reg        axi_lite_bvalid;
     reg [31:0] axi_lite_araddr;
-    reg axi_lite_arready;
-    reg [1:0] axi_lite_rresp;
-    reg axi_lite_rvalid;
+    reg        axi_lite_arready;
+    reg [ 1:0] axi_lite_rresp;
+    reg        axi_lite_rvalid;
 
     assign s_axi_lite_awready = axi_lite_awready;
     assign s_axi_lite_wready  = axi_lite_wready;
@@ -146,19 +159,31 @@ module adc_trigger (
         end
     end
 
-    assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrTrigger[29:2]) ? trigger_reg : 0;
-    assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrTrigger[29:2]) ? 2'b00 : 2'b10;
+    assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
+                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? divider_reg : 0;
+    assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
+                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? 2'b00 : 2'b10;
 
     // AXI4-Lite write logic
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
-            trigger_reg <= 0;
+            divider_reg <= 0;
             axi_lite_bresp <= 2'b00;
         end else begin
             if (s_axi_lite_wvalid) begin
+                if (config_reg[1]) begin
+                    // The trigger for the next cycle is always reset.
+                    // 'adc_trigger_impl' checks this at every cycle
+                    // and resets its state accordingly.
+                    config_reg[1] <= 0;
+                end
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
-                    AddrTrigger[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, trigger_reg);
+                    AddrConfig[29:2]: begin
+                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, config_reg);
+                        axi_lite_bresp <= 2'b00;
+                    end
+                    AddrDivider[29:2]: begin
+                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, divider_reg);
                         axi_lite_bresp <= 2'b00;
                     end
                     default: axi_lite_bresp <= 2'b10;
@@ -170,18 +195,52 @@ module adc_trigger (
     adc_trigger_impl adc_trigger_0 (
         .clk(aclk),
         .resetn(aresetn),
-        .divider(trigger_reg),
-        .trigger(trigger)
+        .divider(divider_reg),
+        .cfg(config_reg),
+        .trigger(trigger),
+        .cnv(cnv),
+        .busy(busy),
+        .last(last)
     );
 endmodule
 
 module adc_trigger_impl (
-    input wire clk,
-    input wire resetn,
-    input wire [31:0] divider,
-    output wire trigger
+    input  wire        clk,
+    input  wire        resetn,
+    input  wire [31:0] divider,
+    input  wire [31:0] cfg,
+    output reg         trigger = 0,
+    output wire        cnv,
+    input  wire        busy,
+    input  wire        last
 );
+    localparam reg [1:0] StateIdle = 2'b00;
+    localparam reg [1:0] StateRun = 2'b10;
+    localparam reg [1:0] StateStop = 2'b01;
+    reg        adc_busy = 0;
+    reg [ 1:0] state_clk = StateIdle;
     reg [31:0] counter = 32'b0;
+
+    always @(posedge clk or negedge resetn) begin
+        if (!resetn) begin
+            state_clk <= StateIdle;
+        end else begin
+            case (state_clk)
+                StateRun: begin
+                    if (last && ~cfg[1]) begin
+                        state_clk <= StateStop;
+                    end
+                end
+                StateStop: begin
+                    if (cfg[0] || cfg[1]) begin
+                        state_clk <= StateRun;
+                    end
+                end
+                default: state_clk <= StateRun;
+            endcase
+        end
+    end
+
     // Logic for trigger output.
     // By wrinting a value other than 0 to the divider input
     // the trigger is pulsed for one clock cycle every (2^(divier)-1)
@@ -189,11 +248,33 @@ module adc_trigger_impl (
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             counter <= 32'b0;
-        end else if (counter < divider && divider != 0) begin
+        end else if (counter < divider && divider != 0 && state_clk[1]) begin
             counter <= counter + 1;
         end else begin
             counter <= 32'b0;
         end
     end
-    assign trigger = (counter == divider) & |counter;
+
+    // state_clk[1] is only set if the current state is 'StateRun'
+    assign cnv = state_clk[1] & (counter == divider) & |counter;
+
+    always @(posedge clk or posedge busy or negedge busy or negedge resetn) begin
+        if (!resetn) begin
+            adc_busy <= 0;
+        end else begin
+            if (adc_busy) begin
+                if (!busy) begin
+                    adc_busy <= 0;
+                    trigger  <= 1;
+                end
+            end else begin
+                if (clk && trigger) begin
+                    trigger <= 0;
+                end
+                if (busy) begin
+                    adc_busy <= 1;
+                end
+            end
+        end
+    end
 endmodule
