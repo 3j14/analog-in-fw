@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "packetizer.v"
 
 module axis_loopback_checker (
     input  wire        aclk,

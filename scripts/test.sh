@@ -3,6 +3,7 @@ set -euo pipefail
 
 TESTBENCHES=$(find library \( -path library/red-pitaya-notes -o -path library/adi-hdl \) -prune -false -o -name \*_tb.sv)
 BUILD_DIR="./build"
+mkdir -p -- "$BUILD_DIR"
 
 case "$(uname -s)" in
     Darwin)
@@ -17,32 +18,48 @@ case "$(uname -s)" in
         ;;
 esac
 
-HAS_ERROR=0
+HAS_ERROR=false
 
 set +e
 for test_bench in $TESTBENCHES; do
-    echo "Compile '$test_bench'..."
     module="$(basename "$test_bench" | sed 's|\.sv||')"
+    dir="$(dirname "$test_bench")"
+    non_tb_file="$dir/${module/_tb/}.v"
+    # Add other files like the module.v (without '_tb' extension)
+    # and the yosys simulation sources.
+    declare -a otherfiles
+    if [[ -f "$non_tb_file" ]]; then
+        otherfiles+=( "$non_tb_file" )
+    fi
+    if [[ -f "$YOSYS_SIM" ]]; then
+        otherfiles+=( "$YOSYS_SIM" )
+    fi
+    echo "Compile '$test_bench'..."
+    # Compile the SystemVerilog testbench
     verilator --binary \
         config.vlt \
         -Mdir "$BUILD_DIR" \
         -o "$module" \
-        -I"$(dirname "$test_bench")" \
-        "$YOSYS_SIM" \
+        -I"$dir" \
+        "${otherfiles[@]}" \
         "$test_bench" \
         --top "$module" &> /dev/null
-    if [[ "$?" == "0" ]]; then
+    if [[ $? -eq 0 ]]; then
+        # Compilation succeeded, proceed to run
+        # the compiled executable
         echo "Running '$module'..."
         ./"$BUILD_DIR"/"$module"
-        if [[ "$?" != "0" ]]; then
-            HAS_ERROR=1
+        if [[ $? -ne 0 ]]; then
+            HAS_ERROR=true
         fi
     else
         echo "Compilation failed for '$module'"
-        HAS_ERROR=1
+        HAS_ERROR=true
     fi
 done
 
-if [[ "$HAS_ERROR" == "1" ]]; then
+# Check if any of the previous compilation steps were
+# successful.
+if [[ "$HAS_ERROR" = true ]]; then
     exit 1;
 fi

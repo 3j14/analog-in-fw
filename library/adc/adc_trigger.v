@@ -1,15 +1,12 @@
-module adc_config (
+`timescale 1ns / 1ps
+
+module adc_trigger (
     input  wire        aclk,
     input  wire        aresetn,
-    output wire [31:0] cfg,
-    output wire [31:0] dma_cfg,
-    output wire [31:0] packetizer_cfg,
-    input  wire [31:0] status,
-    // AXIS manager to ADC
-    output wire [31:0] m_axis_tdata,
-    output wire        m_axis_tvalid,
-    input  wire        m_axis_tready,
-    // AXI subordinate
+    output wire        trigger,
+    output wire        cnv,
+    input  wire        busy,
+    // AXI4-Lite subordinate
     input  wire [31:0] s_axi_lite_awaddr,
     input  wire [ 2:0] s_axi_lite_awprot,
     input  wire        s_axi_lite_awvalid,
@@ -34,22 +31,10 @@ module adc_config (
     output wire        s_axi_lite_rvalid,
     input  wire        s_axi_lite_rready
 );
-    localparam reg [29:0] AddrConfig = 30'h0000_0004;
-    localparam reg [29:0] AddrStatus = 30'h0000_0008;
-    localparam reg [29:0] AddrDma = 30'h0000_000C;
-    localparam reg [29:0] AddrPacketizer = 30'h0000_0010;
-    localparam reg [29:0] AddrAxis = 30'h0000_0014;
+    `include "axi4lite_helpers.vh"
+    localparam reg [29:0] AddrTrigger = 30'h0000_0018;
 
-    reg  [31:0] config_reg = 32'b0;
-    wire [31:0] status_reg;
-    reg  [31:0] dma_cfg_reg = 32'b0;
-    reg  [31:0] packetizer_cfg_reg = 32'b0;
-    reg  [31:0] axis_reg = 32'b0;
-
-    assign cfg = config_reg;
-    assign dma_cfg = dma_cfg_reg;
-    assign packetizer_cfg = packetizer_cfg_reg;
-    assign status_reg = status;
+    reg [31:0] trigger_reg = 32'b0;
 
     reg [31:0] axi_lite_awaddr;
     reg axi_lite_awready;
@@ -60,7 +45,6 @@ module adc_config (
     reg axi_lite_arready;
     reg [1:0] axi_lite_rresp;
     reg axi_lite_rvalid;
-    reg axis_tvalid = 1'b0;
 
     assign s_axi_lite_awready = axi_lite_awready;
     assign s_axi_lite_wready  = axi_lite_wready;
@@ -78,7 +62,6 @@ module adc_config (
 
     reg [1:0] state_write = StateIdle;
     reg [1:0] state_read = StateIdle;
-
 
     // AXI4-Lite state machine for write operations
     always @(posedge aclk or negedge aresetn) begin
@@ -163,46 +146,54 @@ module adc_config (
         end
     end
 
-    assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
-                              (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? status_reg :
-                              (axi_lite_araddr[29:2] == AddrAxis[29:2]) ? axis_reg : 0;
-    assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
-                              (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? 2'b00 :
-                              (axi_lite_araddr[29:2] == AddrAxis[29:2]) ? 2'b00 : 2'b10;
+    assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrTrigger[29:2]) ? trigger_reg : 0;
+    assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrTrigger[29:2]) ? 2'b00 : 2'b10;
 
     // AXI4-Lite write logic
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
-            config_reg <= 0;
-            axis_reg <= 0;
-            axis_tvalid <= 0;
+            trigger_reg <= 0;
             axi_lite_bresp <= 2'b00;
         end else begin
-            if (axis_tvalid && m_axis_tready) begin
-                axis_tvalid <= 0;
-            end
             if (s_axi_lite_wvalid) begin
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
-                    AddrConfig[29:2]: begin
-                        axi4lite_helpers.write_register(s_axi_lite_wdata, s_axi_lite_wstrb,
-                                                        config_reg);
+                    AddrTrigger[29:2]: begin
+                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, trigger_reg);
                         axi_lite_bresp <= 2'b00;
-                    end
-                    AddrStatus[29:2]: begin
-                        // The status register is read-only
-                        axi_lite_bresp <= 2'b10;
-                    end
-                    AddrAxis[29:2]: begin
-                        axi4lite_helpers.write_register(s_axi_lite_wdata, s_axi_lite_wstrb,
-                                                        axis_reg);
-                        axi_lite_bresp <= 2'b00;
-                        axis_tvalid <= 1;
                     end
                     default: axi_lite_bresp <= 2'b10;
                 endcase
             end
         end
     end
-    assign m_axis_tdata  = axis_reg;
-    assign m_axis_tvalid = axis_tvalid;
+
+    adc_trigger_impl adc_trigger_0 (
+        .clk(aclk),
+        .resetn(aresetn),
+        .divider(trigger_reg),
+        .trigger(trigger)
+    );
+endmodule
+
+module adc_trigger_impl (
+    input wire clk,
+    input wire resetn,
+    input wire [31:0] divider,
+    output wire trigger
+);
+    reg [31:0] counter = 32'b0;
+    // Logic for trigger output.
+    // By wrinting a value other than 0 to the divider input
+    // the trigger is pulsed for one clock cycle every (2^(divier)-1)
+    // clock cycles.
+    always @(posedge clk or negedge resetn) begin
+        if (!resetn) begin
+            counter <= 32'b0;
+        end else if (counter < divider && divider != 0) begin
+            counter <= counter + 1;
+        end else begin
+            counter <= 32'b0;
+        end
+    end
+    assign trigger = (counter == divider) & |counter;
 endmodule

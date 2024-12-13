@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "adc_trigger.v"
 
 module adc_trigger_tb #(
     parameter real CLK_FREQ = 125.0

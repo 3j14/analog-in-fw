@@ -1,6 +1,5 @@
 `timescale 1ns / 1ps
 
-
 module adc_impl #(
     parameter integer CNV_TIME = 282
 ) (

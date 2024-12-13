@@ -1,5 +1,4 @@
 `timescale 1ns / 1ps
-`include "axi4lite_helpers.v"
 
 module packetizer (
     input  wire        aclk,
@@ -40,6 +39,7 @@ module packetizer (
     output wire        s_axi_lite_rvalid,
     input  wire        s_axi_lite_rready
 );
+    `include "axi4lite_helpers.vh"
     // The packetizer takes an input stream of samples from the
     // ADC Manager and streams them to the AXI DMA IP.
     // On the last block of a predefined number of samples, 'TLAST' of
@@ -187,8 +187,7 @@ module packetizer (
             if (s_axi_lite_wvalid) begin
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
                     AddrConfig[29:2]: begin
-                        axi4lite_helpers.write_register(s_axi_lite_wdata, s_axi_lite_wstrb,
-                                                        config_reg);
+                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, config_reg);
                         axi_lite_bresp <= 2'b00;
                     end
                     // The status register is a read-only register
