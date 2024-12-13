@@ -1,25 +1,5 @@
 # From Pavel Demin's 'red-pitaya-notes', licensed under the MIT License.
 # Adapted to remove wireless devices and add support for Linux 6.12.
-diff -rupN old/linux-6.12/drivers/char/Kconfig linux-6.12/drivers/char/Kconfig
---- old/linux-6.12/drivers/char/Kconfig
-+++ linux-6.12/drivers/char/Kconfig
-@@ -422,4 +422,8 @@ config ADI
- 	  and SSM (Silicon Secured Memory).  Intended consumers of this
- 	  driver include crash and makedumpfile.
- 
-+config DEVCMA
-+	bool "/dev/cma virtual device support"
-+	default y
-+
- endmenu
-diff -rupN old/linux-6.12/drivers/char/Makefile linux-6.12/drivers/char/Makefile
---- old/linux-6.12/drivers/char/Makefile
-+++ linux-6.12/drivers/char/Makefile
-@@ -43,3 +43,4 @@ obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
- obj-$(CONFIG_XILLYBUS_CLASS)	+= xillybus/
- obj-$(CONFIG_POWERNV_OP_PANEL)	+= powernv-op-panel.o
- obj-$(CONFIG_ADI)		+= adi.o
-+obj-$(CONFIG_DEVCMA)		+= cma.o
 diff -rupN old/linux-6.12/drivers/net/phy/intel-xway.c linux-6.12/drivers/net/phy/intel-xway.c
 --- old/linux-6.12/drivers/net/phy/intel-xway.c
 +++ linux-6.12/drivers/net/phy/intel-xway.c

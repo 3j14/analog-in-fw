@@ -83,7 +83,6 @@ DTS_SOURCES += $(wildcard dts/*.dts)
 
 LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES := linux/linux-configfs-$(LINUX_VERSION).patch
-LINUX_OTHER_SOURCES += $(RPN_DIR)/patches/cma.c
 LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
 LINUX_OTHER_SOURCES += linux/configfs.c
 
@@ -257,11 +256,10 @@ build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	mkdir -p $@
 	# Download Linux source and unpack to build directory
 	curl -L --output - $(LINUX_TARBALL) | tar x --xz --strip-components 1 -C $@
-	# Patch Linux to include additional drivers and modify CMA.
+	# Patch Linux to include additional drivers
 	patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
-	cp $(RPN_DIR)/patches/cma.c $@/drivers/char
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
 	cp linux/configfs.c $@/drivers/of
 
