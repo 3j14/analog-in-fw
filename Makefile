@@ -97,9 +97,6 @@ SOURCES += $(wildcard constraints/*.tcl)
 ifeq ($(PROJECT), spitest)
 SOURCES += $(ADI_HDL_ALL)
 endif
-ifeq ($(PROJECT), adc)
-SOURCES += $(RPN_CORES_BUILD_DIRS)
-endif
 
 EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
 
