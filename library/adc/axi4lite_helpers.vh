@@ -1,7 +1,7 @@
 task automatic write_register;
     input reg [31:0] s_axi_lite_wdata;
     input reg [3:0] s_axi_lite_wstrb;
-    input reg [31:0] data;
+    inout reg [31:0] data;
     integer byte_index;
     begin
         for (byte_index = 0; byte_index < 4; byte_index = byte_index + 1) begin
