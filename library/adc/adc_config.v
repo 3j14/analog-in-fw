@@ -43,11 +43,9 @@ module adc_config (
     input  wire        s_axi_lite_rready
 );
     `include "axi4lite_helpers.vh"
-    localparam reg [29:0] AddrConfig = 30'h0000_0004;
-    localparam reg [29:0] AddrStatus = 30'h0000_0008;
-    localparam reg [29:0] AddrDma = 30'h0000_000C;
-    localparam reg [29:0] AddrPacketizer = 30'h0000_0010;
-    localparam reg [29:0] AddrAxis = 30'h0000_0014;
+    localparam reg [29:0] AddrConfig = 30'h0000_0000;
+    localparam reg [29:0] AddrStatus = 30'h0000_0004;
+    localparam reg [29:0] AddrAxis = 30'h0000_0008;
 
     reg  [31:0] config_reg = 32'b0;
     wire [31:0] status_reg;
@@ -60,7 +58,7 @@ module adc_config (
 
     assign adc_resetn = config_reg[0] & aresetn;
     assign dma_resetn = config_reg[1] & aresetn;
-    assign packetizer_resetn = config_reg[2];
+    assign packetizer_resetn = config_reg[2] & aresetn;
     assign pwr_en = config_reg[3];
     assign ref_en = config_reg[4];
     assign io_en = config_reg[5];

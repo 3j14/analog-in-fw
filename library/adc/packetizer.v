@@ -51,8 +51,8 @@ module packetizer (
     // unsinged integer equal to the number of samples. Writing zero
     // to the register disables the packetizer completly, not forwarding
     // any packages.
-    localparam reg [29:0] AddrConfig = 30'h0000_001C;
-    localparam reg [29:0] AddrStatus = 30'h0000_0024;
+    localparam reg [29:0] AddrConfig = 30'h0000_0200;
+    localparam reg [29:0] AddrStatus = 30'h0000_0204;
 
     // Internal register for storing data recieved on the AXI
     // subordinates.
