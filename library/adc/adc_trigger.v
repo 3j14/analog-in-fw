@@ -258,17 +258,19 @@ module adc_trigger_impl (
     // state_clk[1] is only set if the current state is 'StateRun'
     assign cnv = state_clk[1] & (counter == divider) & |counter;
 
-    always @(posedge clk or posedge busy or negedge busy or negedge resetn) begin
+    // Technically, 'busy' is not aligned with the clock. However,
+    // the busy signal is usually high for more than 200 ns,
+    // whereas a clock cycle is 20 ns, so it should be sufficient
+    // to assume synchronicity with the clock.
+    always @(posedge clk or negedge busy or negedge resetn) begin
         if (!resetn) begin
             adc_busy <= 0;
         end else begin
-            if (adc_busy) begin
-                if (!busy) begin
-                    adc_busy <= 0;
-                    trigger  <= 1;
-                end
+            if (adc_busy && !busy) begin
+                adc_busy <= 0;
+                trigger  <= 1;
             end else begin
-                if (clk && trigger) begin
+                if (trigger) begin
                     trigger <= 0;
                 end
                 if (busy) begin
