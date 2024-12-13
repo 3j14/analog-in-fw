@@ -73,7 +73,9 @@ create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps
 set_property -dict [list \
     CONFIG.PCW_IMPORT_BOARD_PRESET "library/red-pitaya-notes/cfg/red_pitaya.xml" \
     CONFIG.PCW_USE_S_AXI_HP0 {1} \
-    CONFIG.PCW_USE_DEFAULT_ACP_USER_VAL {1}
+    CONFIG.PCW_USE_DEFAULT_ACP_USER_VAL {1} \
+    CONFIG.PCW_IRQ_F2P_INTR {1} \
+    CONFIG.PCW_USE_FABRIC_INTERRUPT {1} \
 ] [get_bd_cells ps]
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {
 make_external {FIXED_IO, DDR}
@@ -149,6 +151,7 @@ connect_bd_intf_net [get_bd_intf_pins packetizer/m_axis_s2mm] [get_bd_intf_pins 
 connect_bd_net [get_bd_pins adc_config/dma_resetn] [get_bd_pins axi_dma/axi_resetn]
 connect_bd_net $adc_clk [get_bd_pins axi_dma/m_axi_s2mm_aclk]
 connect_bd_net $adc_clk [get_bd_pins axi_dma/s_axi_lite_aclk]
+connect_bd_net [get_bd_pins axi_dma/s2mm_introut] [get_bd_pins ps/IRQ_F2P]
 # Automation
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/adc_config/s_axi_lite} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins adc_config/s_axi_lite]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/adc_trigger/s_axi_lite} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins adc_trigger/s_axi_lite]
