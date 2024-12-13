@@ -59,19 +59,13 @@ module adc_manager #(
     // Output clock buffer with gated with clock-enable.
     // Either BUFHCE or BUFMRCE is needed for their synchronous
     // transition.
-    BUFGCTRL #(
-        .INIT_OUT(0),
-        .PRESELECT_I0("TRUE")
+    BUFHCE #(
+        .CE_TYPE ("SYNC"),
+        .INIT_OUT(0)
     ) output_clk (
-        .O(spi_sck),
-        .CE0(spi_sck_enable),
-        .I0(aclk),
-        .CE1(),
-        .I1(),
-        .IGNORE0(),
-        .IGNORE1(),
-        .S0(1'b1),
-        .S1()
+        .O (spi_sck),
+        .CE(spi_sck_enable),
+        .I (aclk)
     );
 
     assign s_axis_tready = ~transaction_active & ~reg_available;
