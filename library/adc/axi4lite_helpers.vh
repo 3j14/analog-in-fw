@@ -6,7 +6,7 @@ task automatic write_register;
     begin
         for (byte_index = 0; byte_index < 4; byte_index = byte_index + 1) begin
             if (s_axi_lite_wstrb[byte_index] == 1) begin
-                data[8*byte_index+:8] = s_axi_lite_wdata[8*byte_index+:8];
+                data[8*byte_index+:8] <= s_axi_lite_wdata[8*byte_index+:8];
             end
         end
     end
