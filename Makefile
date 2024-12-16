@@ -43,7 +43,7 @@ VITIS = vitis
 VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
-# Overwrite Analog Devices' Vivado version check
+
 REQUIRED_VIVADO_VERSION ?= 2024.2
 export REQUIRED_VIVADO_VERSION
 
@@ -60,22 +60,15 @@ LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERS
 FPGAUTIL_VERSION ?= 2024.2
 FPGAUTIL_C := https://github.com/Xilinx/meta-xilinx/raw/refs/tags/xlnx-rel-v$(FPGAUTIL_VERSION)/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c
 
-# Targets for Analog Devices' SPI Engine
-ADI_HDL_DIR := library/adi-hdl
-ADI_HDL_IPS := $(dir $(shell find $(ADI_HDL_DIR)/library/spi_engine -name Makefile))
-ADI_HDL_IPS += $(dir $(shell find $(ADI_HDL_DIR)/library/axi_pwm_gen -name Makefile))
-ADI_HDL_ALL := $(addsuffix all, $(ADI_HDL_IPS))
-ADI_HDL_CLEAN := $(addsuffix clean, $(ADI_HDL_IPS))
-
 # Targets for Pavel Demin's Red Pitaya Notes
 RPN_DIR := library/red-pitaya-notes
 RPN_CORE_FILES := $(wildcard $(RPN_DIR)/cores/*.v)
 RPN_CORES := $(basename $(notdir $(RPN_CORE_FILES)))
 RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
 
-HDL_FILES := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv | sort)
+HDL_FILES := $(shell find library -path $(RPN_DIR) -prune -false -o -name \*.v -o -name \*.sv | sort)
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv | sort)
-HDL_INCLUDE_DIRS := $(shell find library \( -path $(RPN_DIR) -o -path $(ADI_HDL_DIR) \) -prune -false -o -name \*.v -o -name \*.sv -exec dirname "{}" \; | sort -u) 
+HDL_INCLUDE_DIRS := $(shell find library -path $(RPN_DIR) -prune -false -o -name \*.v -o -name \*.sv -exec dirname "{}" \; | sort -u) 
 HDL_INCLUDES := $(addprefix -I,$(HDL_INCLUDE_DIRS))
 
 DTS_SOURCES := $(wildcard dts/*.dts)
@@ -92,9 +85,6 @@ SOURCES += $(wildcard projects/$(PROJECT)/*.sv)
 SOURCES += $(wildcard projects/$(PROJECT)/*.tcl)
 SOURCES += $(wildcard constraints/*.xdc)
 SOURCES += $(wildcard constraints/*.tcl)
-ifeq ($(PROJECT), spitest)
-SOURCES += $(ADI_HDL_ALL)
-endif
 
 EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
 
@@ -133,7 +123,7 @@ bitstream: $(BUILD_DIR)/$(PROJECT).bit
 impl: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 project: $(BUILD_DIR)/$(PROJECT).xpr
 
-clean: $(ADI_HDL_CLEAN)
+clean:
 	$(MAKE) -C $(RPN_DIR) clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
@@ -224,12 +214,6 @@ $(BUILD_DIR)/$(PROJECT).xpr: $(SOURCES)
 	mkdir -p $(@D)
 	# Run the project script
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/project.tcl -tclargs $(PROJECT) $(PART) $(@D)
-
-$(ADI_HDL_ALL):
-	$(MAKE) -C $(@D) all
-
-$(ADI_HDL_CLEAN):
-	$(MAKE) -C $(@D) clean
 
 $(RPN_CORES_BUILD_DIRS): $(RPN_CORE_FILES)
 	# Build the IPs of the red-pitaya-notes project

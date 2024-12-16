@@ -23,6 +23,4 @@ The `library` directory contains additional git submodules, namely
  - [pavel-demin/red-pitaya-notes](https://github.com/pavel-demin/red-pitaya-notes),
     licensed under the MIT License by Pavel Demin,
     see [`LICENSE`](https://github.com/pavel-demin/red-pitaya-notes/blob/master/LICENSE).
- - [analogdevicesinc/hdl](https://github.com/analogdevicesinc/hdl),
-    see [`LICENSE`](https://github.com/analogdevicesinc/hdl/blob/main/LICENSE).
 

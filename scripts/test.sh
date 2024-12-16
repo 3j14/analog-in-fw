@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TESTBENCHES=$(find library \( -path library/red-pitaya-notes -o -path library/adi-hdl \) -prune -false -o -name \*_tb.sv)
+TESTBENCHES=$(find library -path library/red-pitaya-notes -prune -false -o -name \*_tb.sv)
 BUILD_DIR="./build"
 mkdir -p -- "$BUILD_DIR"
 
