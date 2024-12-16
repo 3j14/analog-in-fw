@@ -203,7 +203,8 @@ $(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
 
 $(BUILD_DIR)/pl.dtbo: $(BUILD_DIR)/dts/pl.dtsi
-	dtc -O dtb -o $@ -b 0 -@ $<
+	grep -q 'dmadc' $< || echo '/include/ "dmadc.dtsi"' >> $<
+	dtc -O dtb -o $@ -b 0 -@ -i ./dts $<
 
 $(BUILD_DIR)/$(PROJECT).bin: $(BUILD_DIR)/$(PROJECT).bit
 	echo "all:{ $< }" > $(@D)/$(PROJECT).bif
