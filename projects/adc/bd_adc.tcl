@@ -167,4 +167,13 @@ connect_bd_net [get_bd_ports exp_adc_diffamp_en] [get_bd_pins adc_config/diffamp
 connect_bd_net [get_bd_ports exp_adc_opamp_en] [get_bd_pins adc_config/opamp_en]
 # LEDs
 connect_bd_net [get_bd_pins led_concat/dout] [get_bd_ports led_o]
+connect_bd_net [get_bd_pins adc_trigger/trigger] [get_bd_pins led_concat/In0]
+connect_bd_net [get_bd_pins adc_config/adc_resetn] [get_bd_pins led_concat/In1]
+connect_bd_net [get_bd_pins adc_config/packetizer_resetn] [get_bd_pins led_concat/In2]
+connect_bd_net [get_bd_pins adc_config/pwr_en] [get_bd_pins led_concat/In3]
+connect_bd_net [get_bd_pins adc_config/ref_en] [get_bd_pins led_concat/In4]
+connect_bd_net [get_bd_pins adc_config/io_en] [get_bd_pins led_concat/In5]
+connect_bd_net [get_bd_pins adc_config/diffamp_en] [get_bd_pins led_concat/In6]
+connect_bd_net [get_bd_pins adc_config/opamp_en] [get_bd_pins led_concat/In7]
+
 regenerate_bd_layout
