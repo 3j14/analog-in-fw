@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 TESTBENCHES=$(find library -path library/red-pitaya-notes -prune -false -o -name \*_tb.sv)
-BUILD_DIR="./build"
+BUILD_DIR="./build/verilator"
 mkdir -p -- "$BUILD_DIR"
+declare -a otherfiles
 
 case "$(uname -s)" in
     Darwin)
@@ -23,11 +24,13 @@ HAS_ERROR=false
 set +e
 for test_bench in $TESTBENCHES; do
     module="$(basename "$test_bench" | sed 's|\.sv||')"
+    local_build_dir="$BUILD_DIR/$module"
+    mkdir -p -- "$local_build_dir"
     dir="$(dirname "$test_bench")"
     non_tb_file="$dir/${module/_tb/}.v"
     # Add other files like the module.v (without '_tb' extension)
     # and the yosys simulation sources.
-    declare -a otherfiles
+    otherfiles=()
     if [[ -f "$non_tb_file" ]]; then
         otherfiles+=( "$non_tb_file" )
     fi
@@ -38,7 +41,7 @@ for test_bench in $TESTBENCHES; do
     # Compile the SystemVerilog testbench
     verilator --binary \
         config.vlt \
-        -Mdir "$BUILD_DIR" \
+        -Mdir "$local_build_dir" \
         -o "$module" \
         -I"$dir" \
         "${otherfiles[@]}" \
@@ -48,7 +51,7 @@ for test_bench in $TESTBENCHES; do
         # Compilation succeeded, proceed to run
         # the compiled executable
         echo "Running '$module'..."
-        ./"$BUILD_DIR"/"$module"
+        "./$local_build_dir/$module"
         if [[ $? -ne 0 ]]; then
             HAS_ERROR=true
         fi

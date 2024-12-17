@@ -39,13 +39,6 @@ jobs:
         run: |
           sudo mkdir -p /usr/share/yosys/xilinx
           sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
-      - name: Clone verilator repo for verilator-docker
-        uses: actions/checkout@v4
-        with:
-          repository: verilator/verilator
-          path: ./verilator
-          ref: master
-          sparse-checkout: ci/docker/run/verilator-docker
       - name: Install make
         run: |
           sudo apt-get update
@@ -58,12 +51,6 @@ jobs:
         working-directory: ./analog-in-fw
         run: |
           set -eo pipefail
-          # Remove -ti option from verilator-docker and add /usr/share/yosys
-          sed -i 's|-ti|-v /usr/share/yosys:/usr/share/yosys|' "$GITHUB_WORKSPACE/verilator/ci/docker/run/verilator-docker"
-          sudo touch /usr/bin/verilator
-          sudo chmod +x /usr/bin/verilator
-          echo '#!/usr/bin/env bash' | sudo tee /usr/bin/verilator
-          echo "$GITHUB_WORKSPACE"'/verilator/ci/docker/run/verilator-docker "latest" "$@"'\
-            | sudo tee /usr/bin/verilator
+          sudo ln -s .github/workflows/verilator.sh /usr/bin/verilator
           make verilator-lint
 
