@@ -13,7 +13,7 @@ modules_install: default
 ifndef INSTALL_MOD_PATH
 	$(error INSTALL_MOD_PATH is undefined)
 endif
-	$(MAKE) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD
+	$(MAKE) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) -C $(KERNEL_DIR) $(MAKE_FLAGS) modules_install M=$$PWD
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD clean

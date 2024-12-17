@@ -129,7 +129,7 @@ clean:
 	$(MAKE) -C ./linux/dma clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
-build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo
+build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo ./linux/dma/dmadc.ko
 	# Build the Linux image
 	# The script may ask you for your password as administrator
 	# privileges are required for some operations.

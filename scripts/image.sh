@@ -101,7 +101,7 @@ sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modu
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
 
 # Copy dmadc kernel module
-sudo make -C ./linux/dma modules_install INSTALL_MOD_PATH="$ROOT_DIR"
+sudo cp ./linux/dma/dmadc.ko "$ROOT_DIR/root"
 
 # Copy device tree overlay and bin file
 _firmware_dir="$ROOT_DIR/lib/firmware"
