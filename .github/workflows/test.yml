@@ -38,6 +38,6 @@ jobs:
         working-directory: ./analog-in-fw
         run: |
           set -eo pipefail
-          sudo ln -s .github/workflows/verilator.sh /usr/bin/verilator
+          sudo ln -s "$(pwd)/.github/workflows/verilator.sh" /usr/bin/verilator
           make test
 
