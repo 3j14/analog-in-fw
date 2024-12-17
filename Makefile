@@ -71,7 +71,8 @@ HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv | sort)
 HDL_INCLUDE_DIRS := $(shell find library -path $(RPN_DIR) -prune -false -o -name \*.v -o -name \*.sv -exec dirname "{}" \; | sort -u) 
 HDL_INCLUDES := $(addprefix -I,$(HDL_INCLUDE_DIRS))
 
-DTS_SOURCES := $(wildcard dts/*.dts)
+DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
+DTS_SOURCES += $(wildcard dts/*.dts)
 
 LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES := linux/linux-configfs-$(LINUX_VERSION).patch

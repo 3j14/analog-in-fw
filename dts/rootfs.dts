@@ -4,6 +4,7 @@
 /dts-v1/;
 
 /include/ "system-top.dts"
+/include/ "common.dts"
 
 / {
   chosen {
