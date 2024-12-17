@@ -15,6 +15,9 @@ ifndef INSTALL_MOD_PATH
 endif
 	$(MAKE) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD
 
-.PHONY: default modules_install
+clean:
+	$(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD clean
+
+.PHONY: default modules_install clean
 
 endif

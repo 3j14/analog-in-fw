@@ -125,6 +125,7 @@ project: $(BUILD_DIR)/$(PROJECT).xpr
 
 clean:
 	$(MAKE) -C $(RPN_DIR) clean
+	$(MAKE) -C ./linux/dma clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
 build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo
