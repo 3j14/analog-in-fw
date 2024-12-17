@@ -27,8 +27,6 @@ jobs:
         run: make verible-lint 
   verilator-lint:
     runs-on: ubuntu-24.04
-    env:
-      VERILATOR_REF: "29fb82d3b792369dad7d488b8191071e3c01076f"
     steps:
       - name: Clone yosys repo for simulation sources
         uses: actions/checkout@v4
@@ -37,95 +35,28 @@ jobs:
           path: ./yosys
           ref: main
           sparse-checkout: techlibs/xilinx/cells_sim.v
-
       - name: Copy cells_sim.v to /usr/share/yosys/xilinx/
         run: |
           sudo mkdir -p /usr/share/yosys/xilinx
           sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
-
-      - name: Cache verilator
-        id: cache-verilator
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            /usr/local/share/verilator
-            /usr/local/bin/verilator
-            /usr/local/bin/verilator_bin_dbg
-            /usr/local/bin/verilator_coverage
-            /usr/local/bin/verilator_gantt
-            /usr/local/bin/verilator_profcfunc
-            /usr/local/bin/verilator_bin
-            /usr/local/bin/verilator_coverage_bin_dbg
-          key: ${{ runner.os }}-verilator-${{ env.VERILATOR_REF }}
-
-      - name: Get verilator source
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
+      - name: Clone verilator repo for verilator-docker
         uses: actions/checkout@v4
         with:
           repository: verilator/verilator
           path: ./verilator
-          ref: ${{ env.VERILATOR_REF }}
-
-      - name: Install dependencies
-        if: steps.cache-verilator.outputs.cache-hit == 'true'
+          ref: master
+          sparse-checkout: ci/docker/run/verilator-docker
+      - name: Install make
         run: |
           sudo apt-get update
-          sudo apt-get -y install \
-            perl \
-            python3 \
-            make \
-            libfl2 \
-            zlib1g \
-            mold \
-            ccache \
-            numactl
-
-      - name: Install verilator
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
-        working-directory: ./verilator
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install \
-            git \
-            help2man \
-            perl \
-            python3 \
-            make \
-            g++ \
-            libfl2 \
-            libfl-dev \
-            zlib1g \
-            zlib1g-dev \
-            mold \
-            ccache \
-            libgoogle-perftools-dev \
-            numactl \
-            autoconf \
-            flex \
-            bison
-          autoconf
-          ./configure
-          make -j "$(nproc)"
-          sudo make install
-
-      - name: Save verilator to cache
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            /usr/local/share/verilator
-            /usr/local/bin/verilator
-            /usr/local/bin/verilator_bin_dbg
-            /usr/local/bin/verilator_coverage
-            /usr/local/bin/verilator_gantt
-            /usr/local/bin/verilator_profcfunc
-            /usr/local/bin/verilator_bin
-            /usr/local/bin/verilator_coverage_bin_dbg
-          key: ${{ steps.cache-verilator.outputs.cache-primary-key }}
-
+          sudo apt-get -y install make
       - uses: actions/checkout@v4
         with:
           path: ./analog-in-fw
       - name: Run verilator lint
-        run: make verilator-lint
-        working-directory: ./analog-in-fw
+        shell: bash
+        run: |
+          set -eo pipefail
+          alias verilator="$(pwd)/verilator/ci/docker/run/verilator-docker latest"
+          make -C ./analog-in-fw verilator-lint
 
