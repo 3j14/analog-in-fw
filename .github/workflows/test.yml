@@ -29,11 +29,10 @@ jobs:
         run: |
           sudo mkdir -p /usr/share/yosys/xilinx
           sudo cp ./yosys/techlibs/xilinx/cells_sim.v /usr/share/yosys/xilinx/
-          rm -rf yosys
 
       - name: Cache verilator
         id: cache-verilator
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             /usr/local/share/verilator
@@ -99,6 +98,7 @@ jobs:
       - name: Save verilator to cache
         uses: actions/cache/save@v4
         with:
+          key: ${{ steps.cache-verilator.outputs.cache-primary-key }}
           path: |
             /usr/local/share/verilator
             /usr/local/bin/verilator
@@ -108,7 +108,6 @@ jobs:
             /usr/local/bin/verilator_profcfunc
             /usr/local/bin/verilator_bin
             /usr/local/bin/verilator_coverage_bin_dbg
-          key: ${{ steps.cache-verilator.outputs.cache-primary-key }}
 
       - uses: actions/checkout@v4
         with:
