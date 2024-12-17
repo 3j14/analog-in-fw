@@ -42,9 +42,13 @@ jobs:
           path: ./analog-in-fw
       - name: Run tests
         shell: bash
+        working-directory: ./analog-in-fw
         run: |
           set -eo pipefail
-          verilator() { $(pwd)/verilator/ci/docker/run/verilator-docker "latest" "$@"; }
-          export -f verilator
-          make -C ./analog-in-fw test
+          sudo touch /usr/bin/verilator
+          sudo chmod +x /usr/bin/verilator
+          echo '#!/usr/bin/env bash' | sudo tee /usr/bin/verilator
+          echo "$GITHUB_WORKSPACE"'/verilator/ci/docker/run/verilator-docker "latest" "$@"'\
+            | sudo tee /usr/bin/verilator
+          make test
 
