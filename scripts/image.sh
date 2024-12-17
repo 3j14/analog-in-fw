@@ -100,6 +100,9 @@ find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursi
 sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
 
+# Copy dmadc kernel module
+sudo make -C ./linux/dma modules_install INSTALL_MOD_PATH="$ROOT_DIR"
+
 # Copy device tree overlay and bin file
 _firmware_dir="$ROOT_DIR/lib/firmware"
 sudo mkdir -p -- "$_firmware_dir"

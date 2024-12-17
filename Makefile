@@ -219,6 +219,9 @@ $(RPN_CORES_BUILD_DIRS): $(RPN_CORE_FILES)
 	# Build the IPs of the red-pitaya-notes project
 	$(MAKE) -C $(RPN_DIR) tmp/cores/$(notdir $@)
 
+linux/dma/dmadc.ko: linux/dma/dmadc.h linux/dma/dmadc.c
+	$(MAKE) -C $(@D)
+
 build/zImage.bin: build/linux-$(LINUX_VERSION)
 	# Adapted from Pavel Demin's 'red-pitaya-notes' project
 	# Builds the Linux kernel using the modified CMA with
