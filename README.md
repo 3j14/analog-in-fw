@@ -1,5 +1,8 @@
 # Firmware for C019 24-bit ADC
 
+[![Test HDL](https://github.com/3j14/analog-in-fw/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/3j14/analog-in-fw/actions/workflows/test.yml)
+[![Lint HDL](https://github.com/3j14/analog-in-fw/actions/workflows/lint.yml/badge.svg?event=push)](https://github.com/3j14/analog-in-fw/actions/workflows/lint.yml)
+
 ![3D image of the 24-bit ADC extension board](/.github/artwork/c019-24-bit-ADC-r2.png)
 
 ## Building
