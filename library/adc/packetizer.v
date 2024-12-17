@@ -75,7 +75,6 @@ module packetizer (
     reg        axi_lite_bvalid;
     reg [31:0] axi_lite_araddr;
     reg        axi_lite_arready;
-    reg [ 1:0] axi_lite_rresp;
     reg        axi_lite_rvalid;
     reg        axis_tvalid = 1'b0;
     reg        axis_tready = 1'b0;
@@ -87,7 +86,6 @@ module packetizer (
     assign s_axi_lite_bresp   = axi_lite_bresp;
     assign s_axi_lite_bvalid  = axi_lite_bvalid;
     assign s_axi_lite_arready = axi_lite_arready;
-    assign s_axi_lite_rresp   = axi_lite_rresp;
     assign s_axi_lite_rvalid  = axi_lite_rvalid;
 
     // AXI4-Lite state machine for write operations

@@ -56,7 +56,6 @@ module adc_trigger (
     reg        axi_lite_bvalid;
     reg [31:0] axi_lite_araddr;
     reg        axi_lite_arready;
-    reg [ 1:0] axi_lite_rresp;
     reg        axi_lite_rvalid;
 
     assign s_axi_lite_awready = axi_lite_awready;
@@ -64,7 +63,6 @@ module adc_trigger (
     assign s_axi_lite_bresp   = axi_lite_bresp;
     assign s_axi_lite_bvalid  = axi_lite_bvalid;
     assign s_axi_lite_arready = axi_lite_arready;
-    assign s_axi_lite_rresp   = axi_lite_rresp;
     assign s_axi_lite_rvalid  = axi_lite_rvalid;
 
     localparam reg [1:0] StateIdle = 2'b00;
