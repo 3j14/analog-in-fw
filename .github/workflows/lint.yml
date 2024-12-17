@@ -58,8 +58,8 @@ jobs:
         working-directory: ./analog-in-fw
         run: |
           set -eo pipefail
-          # Remove -ti option from verilator-docker
-          sed -i 's|-ti||' "$GITHUB_WORKSPACE/verilator/ci/docker/run/verilator-docker"
+          # Remove -ti option from verilator-docker and add /usr/share/yosys
+          sed -i 's|-ti|-v /usr/share/yosys:/usr/share/yosys|' "$GITHUB_WORKSPACE/verilator/ci/docker/run/verilator-docker"
           sudo touch /usr/bin/verilator
           sudo chmod +x /usr/bin/verilator
           echo '#!/usr/bin/env bash' | sudo tee /usr/bin/verilator
