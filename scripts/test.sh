@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 TESTBENCHES=$(find library -path library/red-pitaya-notes -prune -false -o -name \*_tb.sv)
 BUILD_DIR="./build"
