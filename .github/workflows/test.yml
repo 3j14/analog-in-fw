@@ -15,7 +15,7 @@ jobs:
   verilator-test:
     runs-on: ubuntu-24.04
     env:
-      VERILATOR_REF: "29fb82d"
+      VERILATOR_REF: "29fb82d3b792369dad7d488b8191071e3c01076f"
     steps:
       - name: Clone yosys repo for simulation sources
         uses: actions/checkout@v4
