@@ -43,7 +43,7 @@ for test_bench in $TESTBENCHES; do
         -I"$dir" \
         "${otherfiles[@]}" \
         "$test_bench" \
-        --top "$module" &> /dev/null
+        --top "$module" > /dev/null
     if [[ $? -eq 0 ]]; then
         # Compilation succeeded, proceed to run
         # the compiled executable
