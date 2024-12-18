@@ -43,3 +43,12 @@ The `library` directory contains additional git submodules, namely
     licensed under the MIT License by Pavel Demin,
     see [`LICENSE`](https://github.com/pavel-demin/red-pitaya-notes/blob/master/LICENSE).
 
+Other requirements added at build time:
+
+ - [Configfs entries for device-tree](https://github.com/Xilinx/linux-xlnx/blob/master/drivers/of/configfs.c),
+   located in the Xilinx Linux source tree. Licensed under GNU General Public License
+   Version 2 by Pantelis Antoniou.
+ - [fpgautil](https://github.com/Xilinx/meta-xilinx/blob/master/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c),
+   licensed under the MIT License by Xilinx, Inc.
+ - [SSBL](https://github.com/pavel-demin/ssbl) by Pavel Demin.
+ - [Linux kernel](https://kernel.org), licensed under the GNU General Public License version 2.
