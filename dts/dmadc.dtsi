@@ -1,7 +1,8 @@
 &amba {
     dmadc: dmadc@0 {
         compatible = "3j14,dmadc";
-        dma-channels = <&axi_dma 0>;
-        dma-name = "axi_dma";
+        dmas = <&axi_dma 1>;
+        dma-names = "dma_rx";
+        dma-coherent;
     };
 };

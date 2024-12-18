@@ -31,6 +31,7 @@
 #include <linux/workqueue.h>
 
 #include "dmadc.h"
+#include "linux/property.h"
 
 #define DRIVER_NAME "dmadc"
 #define RX_CHANNEL 1
@@ -280,35 +281,53 @@ static void cdevice_exit(struct dmadc_channel *pchannel_p) {
  */
 static int dmadc_probe(struct platform_device *pdev) {
   int rc;
+  int channel_count;
   const char *name;
   struct dmadc *dma;
   struct device *dev = &pdev->dev;
 
   printk(KERN_INFO "dmadc module initialized\n");
 
-  // Allocate memory for the dmadc struct
-  dma = (struct dmadc *)devm_kmalloc(dev, sizeof(struct dmadc), GFP_KERNEL);
-  if (!dma) {
-    dev_err(dev, "Cound not allocate proxy device\n");
-    return -ENOMEM;
+  // Count number of DMA channels. Only one channel is supported
+  channel_count = device_property_string_array_count(dev, "dma-names");
+  if (channel_count < 0) {
+    dev_err(
+        dev,
+        "Could not get DMA names from device tree. Is 'dma-names' present?\n");
+    // channel_count is an error code
+    return channel_count;
   }
-
+  if (channel_count != 1) {
+    dev_err(
+        dev,
+        "Invalid number of DMA names. Only one DMA channel is supported.\n");
+    return ERROR;
+  }
   // Get DMA name from device tree
-  rc = device_property_read_string(dev, "dma-name", &name);
+  rc = device_property_read_string(dev, "dma-names", &name);
   if (rc < 0)
     return rc;
 
-  dma->channel = devm_kmalloc(dev, sizeof(struct dmadc_channel), GFP_KERNEL);
-  if (!dma->channel)
+  // Allocate memory for the dmadc struct
+  dma = (struct dmadc *)devm_kmalloc(dev, sizeof(struct dmadc), GFP_KERNEL);
+  if (!dma) {
+    dev_err(dev, "Cound not allocate DMADC device\n");
     return -ENOMEM;
+  }
+
+  dma->channel = devm_kmalloc(dev, sizeof(struct dmadc_channel), GFP_KERNEL);
+  if (!dma->channel) {
+    dev_err(dev, "Cound not allocate DMA channel\n");
+    return -ENOMEM;
+  }
+  dma->channel->channel_p = dma_request_chan(dev, name);
+  if (IS_ERR(dma->channel->channel_p)) {
+    dev_err(dev, "Unable to request DMA channel '%s'\n", name);
+    return PTR_ERR(dma->channel->channel_p);
+  }
 
   dma->channel->dma_device_p = dev;
   dma->channel->direction = DMA_DEV_TO_MEM;
-  dma->channel->channel_p = dma_request_chan(dev, name);
-  if (IS_ERR(dma->channel->channel_p)) {
-    dev_err(dev, "DMA channel request error\n");
-    return PTR_ERR(dma->channel->channel_p);
-  }
 
   // Allocate DMA memory that will be shared/mapped by user space
   dma->channel->buffer_table_p = (struct channel_buffer *)dmam_alloc_coherent(
@@ -318,6 +337,7 @@ static int dmadc_probe(struct platform_device *pdev) {
     dev_err(dev, "DMA allocation error\n");
     return ERROR;
   }
+
   printk(KERN_INFO
          "Allocating memory, virtual address: %px physical address: %px\n",
          dma->channel->buffer_table_p, (void *)dma->channel->buffer_phys_addr);
