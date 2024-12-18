@@ -45,14 +45,15 @@ VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
-REQUIRED_VIVADO_VERSION ?= 2024.2
+VIVADO_VERSION ?= 2024.2
+REQUIRED_VIVADO_VERSION ?= $(VIVADO_VERSION)
 export REQUIRED_VIVADO_VERSION
 
 BUILD_DIR = build/projects/$(PROJECT)
 PROJECTS = $(notdir $(wildcard ./projects/*))
 
 # Linux, SSBL, and device tree configuration
-DEVICE_TREE_VER ?= 2024.2
+DEVICE_TREE_VER ?= $(VIVADO_VERSION)
 DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
 SSBL_VERSION ?= 20231206
 SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
@@ -60,8 +61,10 @@ LINUX_VERSION_FULL ?= 6.12.5
 LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
 LINUX_MOD_DIR := build/kernel/lib/modules/$(LINUX_VERSION_FULL)-xilinx
-FPGAUTIL_VERSION ?= 2024.2
+FPGAUTIL_VERSION ?= $(VIVADO_VERSION)
 FPGAUTIL_C := https://github.com/Xilinx/meta-xilinx/raw/refs/tags/xlnx-rel-v$(FPGAUTIL_VERSION)/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c
+OF_CONFIGFS_VERSION ?= xilinx-v$(VIVADO_VERSION)
+OF_CONFIGFS_C := https://raw.githubusercontent.com/Xilinx/linux-xlnx/refs/tags/$(OF_CONFIGFS_VERSION)/drivers/of/configfs.c
 
 # Targets for Pavel Demin's Red Pitaya Notes
 RPN_DIR := library/red-pitaya-notes
@@ -80,7 +83,6 @@ DTS_SOURCES += $(wildcard dts/*.dts)
 LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES := linux/linux-configfs-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
-LINUX_OTHER_SOURCES += linux/configfs.c
 LINUX_MAKE_FLAGS := ARCH=arm
 LINUX_MAKE_FLAGS += LLVM=1
 
@@ -259,7 +261,7 @@ build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
-	cp linux/configfs.c $@/drivers/of
+	curl -L --output $@/driver/of $(OF_CONFIGFS_C)
 
 build/fpgautil.c:
 	# Download fpgautil
