@@ -1,4 +1,16 @@
-CFLAGS = -O0 -march=armv7-a -mtune=cortex-a9
+CC := clang
+CFLAGS := -O0
+CFLAGS += --target=arm-linux-gnueabi
+CFLAFS += --sysroot=/usr/arm-linux-gnueabihf
+CFLAGS += -march=armv7-a
+CFLAGS += -mtune=cortex-a9
+CFLAGS += -meabi gnu
+CFLAGS += -marm
+CFLAGS += -std=gnu11
+CFLAGS += -Uarm
+CFLAGS += -Wall
+CFLAGS += -fuse-ld=lld
+CFLAGS += -I$(abspath ../../../linux/dma)
 
 BUILD_DIR ?= .
 
@@ -9,5 +21,5 @@ clean:
 	rm -- $(BUILD_DIR)/adc.elf
 
 $(BUILD_DIR)/%.elf: %.c
-	/usr/bin/arm-linux-gnueabihf-gcc $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
