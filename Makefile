@@ -12,9 +12,11 @@
 #	Targets:
 #		- image: SD card image
 #		- software: Software part of the projects (binary executable)
+#		- boot: boot.bin file
+#		- dma: DMA Linux kernel module
 #		- dtbo: Device tree overlay file
 #		- dtb: Device tree for rootfs image
-#		- boot: boot.bin file
+#		- modules: Linux kernel modules directory
 #		- linux: Build the Linux kernel
 #		- fsbl: First-stage bootloader (requires Vitis Unified IDE)
 #		- ssbl: Second-stage bootloader by Pavel Demin, replaces U-Boot
@@ -22,6 +24,7 @@
 #		- bitstream: FPGA bitstream
 #		- impl: Vivado FPGA implementation
 #		- project: Vivado FPGA project
+#		- clean: Clean all build files
 #
 # License:
 #	Some targets are adapted from Pavel Demin's 'red-pitaya-notes'
@@ -55,8 +58,10 @@ DEVICE_TREE_VER ?= 2024.2
 DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
 SSBL_VERSION ?= 20231206
 SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
-LINUX_VERSION ?= 6.12
-LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION).tar.xz
+LINUX_VERSION_FULL ?= 6.12.5
+LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
+LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
+LINUX_MOD_DIR := build/kernel/lib/modules/$(LINUX_VERSION_FULL)-xilinx
 FPGAUTIL_VERSION ?= 2024.2
 FPGAUTIL_C := https://github.com/Xilinx/meta-xilinx/raw/refs/tags/xlnx-rel-v$(FPGAUTIL_VERSION)/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c
 
@@ -78,6 +83,8 @@ LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES := linux/linux-configfs-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
 LINUX_OTHER_SOURCES += linux/configfs.c
+LINUX_MAKE_FLAGS := ARCH=arm
+LINUX_MAKE_FLAGS += LLVM=1
 
 SOURCES := $(wildcard library/*/*.v)
 SOURCES += $(wildcard library/*/*.sv)
@@ -107,13 +114,15 @@ img:
 }
 endef
 
-.PHONY: all image dtb linux fsbl ssbl xsa bitstream impl project clean
+.PHONY: all image software boot dma dtbo dtb modules linux fsbl ssbl xsa bitstream impl project clean
 all: image bitstream
 image: build/red-pitaya-debian-bookworm-armhf.img
 software: $(EXTRA_EXE)
 boot: build/boot.bin
+dma: linux/dma/dmadc.ko
 dtbo: $(BUILD_DIR)/pl.dtbo
 dtb: build/rootfs.dtb
+modules: $(LINUX_MOD_DIR)/updates/dmadc.ko $(LINUX_MOD_DIR)/modules.order
 linux: build/zImage.bin
 fsbl: build/fsbl.elf
 ssbl: build/ssbl.elf
@@ -129,7 +138,7 @@ clean:
 	$(MAKE) -C ./linux/dma clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
-build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo ./linux/dma/dmadc.ko
+build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo $(LINUX_MOD_DIR)/updates/dmadc.ko $(LINUX_MOD_DIR)/modules.order
 	# Build the Linux image
 	# The script may ask you for your password as administrator
 	# privileges are required for some operations.
@@ -194,7 +203,7 @@ $(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
 	# Generate the Xilinx support archive for the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
 
-$(BUILD_DIR)/pl.dtbo: $(BUILD_DIR)/dts/pl.dtsi
+$(BUILD_DIR)/pl.dtbo: $(BUILD_DIR)/dts/pl.dtsi dts/dmadc.dtsi
 	grep -q 'dmadc' $< || echo '/include/ "dmadc.dtsi"' >> $<
 	dtc -O dtb -o $@ -b 0 -@ -i ./dts $<
 
@@ -221,19 +230,21 @@ $(RPN_CORES_BUILD_DIRS): $(RPN_CORE_FILES)
 	# Build the IPs of the red-pitaya-notes project
 	$(MAKE) -C $(RPN_DIR) tmp/cores/$(notdir $@)
 
+$(LINUX_MOD_DIR)/updates/dmadc.ko: linux/dma/dmadc.ko
+	$(MAKE) -C $(<D) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
+
+$(LINUX_MOD_DIR)/modules.order: build/zImage.bin	
+	$(MAKE) -C build/linux-$(LINUX_VERSION) $(LINUX_MAKE_FLAGS) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
+
 linux/dma/dmadc.ko: linux/dma/dmadc.h linux/dma/dmadc.c
 	$(MAKE) -C $(@D)
 
 build/zImage.bin: build/linux-$(LINUX_VERSION)
-	# Adapted from Pavel Demin's 'red-pitaya-notes' project
-	# Builds the Linux kernel using the modified CMA with
-	# the 'xilinx_zynq_defconfig' configuration.
+	# Adapted from Pavel Demin's 'red-pitaya-notes' project.
+	# Builds the Linux kernel with 'xilinx_zynq_defconfig'.
 	#
-	# Clean the Linux build directory
-	$(MAKE) -C $< mrproper
 	# Cross-compile Linux for Red Pitaya
-	$(MAKE) -C $< ARCH=arm \
-		CROSS_COMPILE=arm-linux-gnueabihf- \
+	$(MAKE) -C $< $(LINUX_MAKE_FLAGS) \
 		-j $(shell nproc 2> /dev/null || echo 1) \
 		LOADADDR=0x8000 \
 		xilinx_zynq_defconfig \

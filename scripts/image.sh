@@ -29,6 +29,7 @@ shift
 LINUX_VERSION="$1"
 shift
 LINUX_DIR="./build/linux-$LINUX_VERSION"
+KERNEL_MOD_DIR="./build/kernel"
 LINUX_VERSION_FULL="$(make -s -C "$LINUX_DIR" kernelversion)-xilinx"
 IMAGE_FILE_FINAL="$BUILD_DIR/red-pitaya-debian-$DEBIAN_SUITE-$DEBIAN_ARCH.img"
 IMAGE_FILE="$(mktemp --tmpdir=$BUILD_DIR_TEMP)"
@@ -94,14 +95,11 @@ unset -v BOOT_DIR
 sudo debootstrap --foreign --include="$DEBIAN_PACKAGES" --arch "$DEBIAN_ARCH" "$DEBIAN_SUITE" "$ROOT_DIR"
 
 # Copy modules from Linux Kernel
-MOD_DIR="$ROOT_DIR/lib/modules/$LINUX_VERSION_FULL"
-sudo mkdir -p "$MOD_DIR/kernel"
-find "$LINUX_DIR" -name \*.ko -printf '%P\n' | sudo rsync -ahrH --no-inc-recursive --chown=0:0 --files-from=- "$LINUX_DIR" "$MOD_DIR/kernel"
-sudo cp "$LINUX_DIR/modules.order" "$LINUX_DIR/modules.builtin" "$LINUX_DIR/modules.builtin.modinfo" "$MOD_DIR/"
+sudo mkdir -p -- "$ROOT_DIR/lib"
+sudo cp -r -- "$KERNEL_MOD_DIR/lib/modules" "$ROOT_DIR/lib/"
+# Remove symlink to original build dir (if present)
+sudo rm -rf -- "$ROOT_DIR/lib/modules/$LINUX_VERSION_FULL/build"
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
-
-# Copy dmadc kernel module
-sudo cp ./linux/dma/dmadc.ko "$ROOT_DIR/root"
 
 # Copy device tree overlay and bin file
 _firmware_dir="$ROOT_DIR/lib/firmware"
