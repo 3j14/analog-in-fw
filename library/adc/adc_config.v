@@ -49,8 +49,6 @@ module adc_config (
 
     reg  [31:0] config_reg = 32'b0;
     wire [31:0] status_reg;
-    reg  [31:0] dma_cfg_reg = 32'b0;
-    reg  [31:0] packetizer_cfg_reg = 32'b0;
     reg  [31:0] axis_reg = 32'b0;
 
     assign cfg = config_reg;
