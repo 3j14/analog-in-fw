@@ -7,7 +7,6 @@
 #   - qemu-user-static
 #   - qemu-user-static-binfmt
 #       (or binfmt-support, qemu-user-binfmt on debian based)
-#   - resize2fs (optional)
 #
 # Generates the build/red-pitaya-debian-*.img file. This can be flashed
 # to an SD card using 'dd if=build/red-pitaya-*.img of=/dev/<sd-card-path> bs=4M'

@@ -7,15 +7,31 @@
 
 ## Building
 
-The projects are build using AMD Vivado&trade; 2024.1 release.
+`make` manages the multiple stages of building the FPGA bitstream, Linux kernel,
+Linux drivers, and the final Debian based image. Refer to the `Makefile`'s header
+for more information on how to build the project.
 
-A convenient `Makefile` is provided to build the projects.
+### Directory structure
+
+ - `constraints`: Vivado `xdc` constraint files, e.g. pin definitions
+ - `dts`: Device tree sources, like the device tree overlay for the DMA driver
+ - `library`: Verilog/SystemVerilog IPs and vendor code
+ - `linux`: Patches for the Linux kernel, and the Linux kernel configuration
+   - `linux/dma`: Sources for the DMADC Linux driver that manages the DMA
+ - `projects`: Source files for creating the Vivado projects (mostly in TCL)
+ - `scripts`: Scripts used to create the project, or build the image
+ - `config.vlt`: Configuration file for Verilator
+ - `Makefile`: Main entry point for `make`
+
+### Vivado Projects
+The projects are build using AMD Vivado&trade; 2024.2 release. The block designs
+can be build using `make`:
 ```shell
-make PROJECT=blink
+make PROJECT=adc project
 ```
 The projects are defined in `tcl` files and can also be created without `make`:
 ```shell
-/path/to/vivado -source scripts/project.tcl -tclargs blink xc7z010clg400-1 /build/projects/blink
+vivado -source scripts/project.tcl -tclargs adc xc7z010clg400-1 /build/projects/adc
 ```
 
 ## License

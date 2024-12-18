@@ -9,6 +9,9 @@
 #
 #		make PROJECT=blink
 #
+#	Projects are located in the 'projects' directory, their name refers
+#	to the name of their directory. The default project is 'adc'.
+#
 #	Targets:
 #		- image: SD card image
 #		- software: Software part of the projects (binary executable)
@@ -26,11 +29,6 @@
 #		- project: Vivado FPGA project
 #		- clean: Clean all build files
 #
-# License:
-#	Some targets are adapted from Pavel Demin's 'red-pitaya-notes'
-#	project, licensed under the MIT License.
-#	This project is licensed under the "BSD-3-Clause License".
-#
 SHELL=/bin/bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
@@ -39,7 +37,7 @@ PROJECT ?= adc
 PART ?= xc7z010clg400-1
 PROCESSOR ?= ps7_cortexa9_0
 
-# Executables
+# Vivado, XSCT, and Vitis executable options
 VIVADO = vivado
 XSCT = xsct
 VITIS = vitis
