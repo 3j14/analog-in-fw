@@ -261,7 +261,7 @@ build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
-	curl -L --output $@/driver/of $(OF_CONFIGFS_C)
+	curl -L --output $@/drivers/of/configfs.c $(OF_CONFIGFS_C)
 
 build/fpgautil.c:
 	# Download fpgautil
