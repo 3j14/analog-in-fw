@@ -52,9 +52,9 @@ module adc_impl #(
             if (reg_command[23:21] == 3'b101) begin
                 device_mode <= RegAccess;
             end else if (device_mode == RegAccess) begin
-                if (reg_command[23:8] == {1'b1, ModeReg}) begin
+                if (reg_command[23:8] == {1'b0, ModeReg}) begin
                     lane_md <= reg_command[7:6];
-                end else if (reg_command[23:8] == {1'b1, ExitReg}) begin
+                end else if (reg_command[23:8] == {1'b0, ExitReg}) begin
                     if (reg_command[0]) begin
                         device_mode <= Conversion;
                     end
@@ -198,16 +198,16 @@ module adc_manager_tb #(
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
-        m_axis_tdata = {8'b0, 1'b1, 15'h0020, 2'b10, 6'b0};
+        m_axis_tdata = {8'b0, 1'b0, 15'h0020, 2'b10, 6'b0};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
-        m_axis_tdata = {8'b0, 1'b1, 15'h0014, 8'b00000001};
+        m_axis_tdata = {8'b0, 1'b0, 15'h0014, 8'b00000001};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
         @(posedge m_axis_tready)
-        if (reg_command_received == {1'b1, 15'h0014, 8'b00000001}) begin
+        if (reg_command_received == {1'b0, 15'h0014, 8'b00000001}) begin
             $display("Device configured");
         end else $error("Register received does not match");
 

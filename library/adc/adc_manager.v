@@ -50,7 +50,7 @@ module adc_manager #(
     reg transaction_active = 0;
     reg reg_available = 0;
 
-    localparam reg [23:0] ExitReg = {1'b1, 15'h0014, 8'd1};
+    localparam reg [23:0] ExitReg = {1'b0, 15'h0014, 8'd1};
     //                write mode ----^^^^  ^^^^^^^^---- address
 
     // Used to gate the SPI clock
