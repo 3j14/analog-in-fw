@@ -1,7 +1,7 @@
 CC := clang
 CFLAGS := -O0
-CFLAGS += --target=arm-linux-gnueabi
-CFLAFS += --sysroot=/usr/arm-linux-gnueabihf
+CFLAGS += --target=arm-linux-gnueabihf
+CFLAGS += --sysroot=/usr/arm-linux-gnueabihf
 CFLAGS += -march=armv7-a
 CFLAGS += -mtune=cortex-a9
 CFLAGS += -meabi gnu
