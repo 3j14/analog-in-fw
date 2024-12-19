@@ -8,3 +8,4 @@ _ide
 *_journal.py
 *_journal.py~
 .rigel_looper
+*.elf
