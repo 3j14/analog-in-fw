@@ -22,15 +22,16 @@ BUILD_DIR ?= .
 .PHONY: all clean
 all: $(BUILD_DIR)/$(TARGET)
 
-$(BUILD_DIR)/$(TARGET): $(BUILD_DIR)/$(OBJECTS)
+$(BUILD_DIR)/$(TARGET): $(addprefix $(BUILD_DIR)/,$(OBJECTS))
 	$(CC) $(CFLAGS) -fuse-ld=lld $^ -o $@
 
 $(BUILD_DIR)/include/%.o: include/%.c $(SOURCES)
 $(BUILD_DIR)/%.o: %.c $(SOURCES)
+	mkdir -p -- $(@D)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm -- $(BUILD_DIR)/$(TARGET)
-	rm -- $(BUILD_DIR)/$(OBJECTS)
+	rm -rf -- $(BUILD_DIR)/$(TARGET)
+	rm -rf -- $(addprefix $(BUILD_DIR)/,$(OBJECTS))
 
 
