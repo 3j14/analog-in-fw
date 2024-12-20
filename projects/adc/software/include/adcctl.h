@@ -29,34 +29,35 @@
 #define ADC_REG_MODE_32BIT_AVERAGE (uint8_t)3
 #define ADC_REG_MODE_TEST          (uint8_t)4
 
-#define ADC_ADDR_CONFIG  0x40000000
-#define ADC_ADDR_STATUS  0x40000004
-#define ADC_ADDR_ADC_REG 0x40000008
+#define ADC_CONFIG_ADDR_RANGE 256
+#define ADC_CONFIG_ADDR       0x40000000
 struct adc_config {
+    uint32_t *_mmap;
     uint8_t *config;
     uint32_t *status;
     uint32_t *adc_reg;
 };
 
-#define PACKETIZER_ADDR_CONFIG 0x40000200
-#define PACKETIZER_ADDR_STATUS 0x40000204
+#define PACKETIZER_ADDR_RANGE 256
+#define PACKETIZER_ADDR       0x40000200
 struct packetizer {
+    uint32_t *_mmap;
     uint32_t *config;
     uint32_t *status;
 };
 
-#define ADC_CONTINUOUS    (uint32_t)1
-#define ADC_TRIGGER_CLEAR (uint32_t)2
+#define ADC_TRIGGER_ONCE       (uint32_t)0
+#define ADC_TRIGGER_CONTINUOUS (uint32_t)1
+#define ADC_TRIGGER_CLEAR      (uint32_t)2
 
-#define ADC_TRIGGER_ADDR_CONFIG  0x40000100
-#define ADC_TRIGGER_ADDR_DIVIDER 0x40000104
+#define ADC_TRIGGER_ADDR_RANGE 256
+#define ADC_TRIGGER_ADDR       0x40000100
 struct adc_trigger {
+    uint32_t *_mmap;
     uint32_t *config;
     uint32_t *divider;
 };
-
 struct adc {
-    int fd;
     struct adc_config config;
     struct packetizer pack;
     struct adc_trigger trigger;
