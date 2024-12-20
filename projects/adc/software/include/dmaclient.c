@@ -18,7 +18,7 @@ int open_dma_channel(struct dma_channel *channel) {
     channel->buffer = (struct channel_buffer *)mmap(
         NULL,
         sizeof(struct channel_buffer),
-        PROT_READ,
+        PROT_READ | PROT_WRITE,
         MAP_SHARED,
         channel->fd,
         0
