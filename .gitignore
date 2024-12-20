@@ -1,10 +1,10 @@
 build
 .Xil
 _ide
-.o
-.d
-.log
-.jou
+*.o
+*.d
+*.log
+*.jou
 *_journal.py
 *_journal.py~
 .rigel_looper

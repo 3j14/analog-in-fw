@@ -1,49 +1,40 @@
-#include <errno.h>
-#include <fcntl.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <sys/mman.h>
+#include <unistd.h>
 
-#include "adc.h"
-#include "dmadc.h"
-
-void reg_write(struct adc_config *adc, uint32_t data) {
-    *(adc->adc_reg) = data;
-}
-
-struct dma_channel {
-    struct channel_buffer *buffer;
-    int fd;
-};
+#include "adcctl.h"
+#include "dmaclient.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Usage: %s num_transfers", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
     struct dma_channel channel;
-    channel.fd = open("/dev/dmadc", O_RDWR);
-    if (channel.fd == -1) {
-        printf("Unable to open '/dev/dmadc'. Is the driver loaded?");
-        exit(errno);
-    }
-    // Map the buffer from kernel to user space
-    channel.buffer = (struct channel_buffer *)mmap(
-        NULL,
-        sizeof(struct channel_buffer),
-        PROT_READ,
-        MAP_SHARED,
-        channel.fd,
-        0
-    );
-    if (channel.buffer == MAP_FAILED) {
-        printf("Unable to map memory from kernel");
-        exit(errno);
+    struct adc adc;
+    int rc;
+
+    rc = open_dma_channel(&channel);
+    if (rc < 0) {
+        exit(-rc);
     }
 
-    printf("Start transfer");
-    ioctl(channel.fd, START_XFER);
+    rc = open_adc(&adc);
+    if (rc < 0) {
+        exit(-rc);
+    }
+
+    // Enable power and IO
+    *adc.config.config =
+        ADC_PWR_EN | ~ADC_REF_EN | ADC_IO_EN | ~ADC_DIFFAMP_EN | ~ADC_OPAMP_EN;
+    // Wait one second for power to stabilize
+    sleep(1);
+    write_adc_reg(&adc.config, ADC_REG_ENTER);
+    uint8_t mode = ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK |
+                   ADC_REG_MODE_SDR | ADC_REG_MODE_TEST;
+    write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
+    write_adc_reg(&adc.config, ADC_REG_EXIT);
+
+    close_adc(&adc);
+
+    /*printf("Start transfer");*/
+    /*ioctl(channel.fd, START_XFER);*/
+    close_dma_channel(&channel);
 }

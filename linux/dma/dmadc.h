@@ -17,15 +17,13 @@
 
 #define BUFFER_SIZE (128 * 1024)
 
-#define FINISH_XFER _IOW('a', 'a', int32_t*)
-#define START_XFER _IOW('a', 'b', int32_t*)
-#define XFER _IOR('a', 'c', int32_t*)
+#define FINISH_XFER _IOW('a', 'a', int32_t *)
+#define START_XFER  _IOW('a', 'b', int32_t *)
+#define XFER        _IOR('a', 'c', int32_t *)
 
-struct channel_buffer
-{
+struct channel_buffer {
     unsigned int buffer[BUFFER_SIZE / sizeof(unsigned int)];
-    enum proxy_status
-    {
+    enum proxy_status {
         PROXY_NO_ERROR = 0,
         PROXY_BUSY = 1,
         PROXY_TIMEOUT = 2,

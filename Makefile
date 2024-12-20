@@ -272,8 +272,7 @@ build/fpgautil: build/fpgautil.c
 
 $(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c
 	mkdir -p -- $(@D)
-	$(MAKE) -C $(<D) BUILD_DIR=$(abspath $(@D)) $(abspath $@.elf)
-	mv -- $@.elf $@
+	$(MAKE) -C $(<D) BUILD_DIR=$(abspath $(@D)) $(abspath $@)
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)
