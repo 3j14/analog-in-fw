@@ -95,6 +95,8 @@ SOURCES += $(wildcard constraints/*.xdc)
 SOURCES += $(wildcard constraints/*.tcl)
 
 EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
+EXTRA_EXE_SOURCES := $(wildcard projects/$(PROJECT)/software/*.[hc])
+EXTRA_EXE_SOURCES += $(wildcard projects/$(PROJECT)/software/include/*.[hc])
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -270,7 +272,7 @@ build/fpgautil.c:
 build/fpgautil: build/fpgautil.c
 	arm-linux-gnueabihf-gcc $< -o $@
 
-$(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c
+$(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c $(EXTRA_EXE_SOURCES)
 	mkdir -p -- $(@D)
 	$(MAKE) -C $(<D) BUILD_DIR=$(abspath $(@D)) $(abspath $@)
 
