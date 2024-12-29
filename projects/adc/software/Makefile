@@ -1,12 +1,23 @@
+ifneq ("$(wildcard ~/.local/arm-*linux-gnueabihf/arm-*linux-gnueabihf/sysroot)","")
+LOCAL_SYSROOT=1
+SYSROOT ?= $(wildcard ~/.local/arm-*linux-gnueabihf/arm-*linux-gnueabihf/sysroot)
+else
+LOCAL_SYSROOT=0
+SYSROOT ?= $(wildcard /usr/arm-*linux-gnueabihf)
+endif
+
 CC := clang
 CFLAGS := -O0
 CFLAGS += --target=arm-linux-gnueabihf
-CFLAGS += --sysroot=/usr/arm-linux-gnueabihf
+CFLAGS += --sysroot=$(SYSROOT)
 CFLAGS += -march=armv7-a
 CFLAGS += -mtune=cortex-a9
 CFLAGS += -meabi gnu
 CFLAGS += -marm
 CFLAGS += -std=gnu11
+ifneq ("$(LOCAL_SYSROOT)","0")
+CFLAGS += --gcc-toolchain=$(SYSROOT)/../..
+endif
 CFLAGS += -Uarm
 CFLAGS += -Wall
 CFLAGS += -I$(abspath ../../../linux/dma) -I. -Iinclude
