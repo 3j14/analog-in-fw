@@ -238,7 +238,7 @@ $(LINUX_MOD_DIR)/updates/dmadc.ko: linux/dma/dmadc.ko
 $(LINUX_MOD_DIR)/modules.order: build/zImage.bin	
 	$(MAKE) -C build/linux-$(LINUX_VERSION) $(LINUX_MAKE_FLAGS) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
 
-linux/dma/dmadc.ko: linux/dma/dmadc.h linux/dma/dmadc.c
+linux/dma/dmadc.ko: linux/dma/dmadc.h linux/dma/dmadc.c build/zImage.bin
 	$(MAKE) -C $(@D)
 
 build/zImage.bin: build/linux-$(LINUX_VERSION)
