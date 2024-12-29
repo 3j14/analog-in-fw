@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
         exit(-rc);
     }
     channel.buffer->length = BUFFER_SIZE;
-    channel.buffer->period_len = 10 * sizeof(uint32_t);
+    channel.buffer->period_len = 128 * sizeof(uint32_t);
 
     rc = open_adc(&adc);
     if (rc < 0) {
@@ -37,7 +37,17 @@ int main(int argc, char *argv[]) {
     *adc.pack.config = channel.buffer->period_len;
     *adc.trigger.divider = 50;
 
+    printf("period_len: %u\n", (size_t)channel.buffer->period_len);
+    printf("buf_len: %u\n", (size_t)channel.buffer->length);
+    printf(
+        "num_periods: %u\n",
+        (size_t)(channel.buffer->length / channel.buffer->period_len)
+    );
+
     printf("Start transfer\n");
+
+    sleep(1);
+
     ioctl(channel.fd, START_XFER);
     ioctl(channel.fd, FINISH_XFER);
     close_adc(&adc);
