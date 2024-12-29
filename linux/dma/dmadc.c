@@ -31,43 +31,41 @@
 #include <linux/workqueue.h>
 
 #include "dmadc.h"
+#include "linux/dev_printk.h"
+#include "linux/kern_levels.h"
 #include "linux/property.h"
 
-#define DRIVER_NAME "dmadc"
-#define RX_CHANNEL 1
-#define ERROR -1
+#define DRIVER_NAME    "dmadc"
+#define RX_CHANNEL     1
+#define ERROR          -1
 #define DMA_TIMEOUT_MS 3000
 
-struct dmadc_channel
-{
-    struct channel_buffer* buffer_table_p; /* user to kernel space interface */
+struct dmadc_channel {
+    struct channel_buffer *buffer_table_p; /* user to kernel space interface */
     dma_addr_t buffer_phys_addr;
 
-    struct device* proxy_device_p; /* character device support */
-    struct device* dma_device_p;
+    struct device *proxy_device_p; /* character device support */
+    struct device *dma_device_p;
     dev_t dev_node;
     struct cdev cdev;
-    struct class* class_p;
+    struct class *class_p;
 
-    struct dma_chan* channel_p; /* dma support */
+    struct dma_chan *channel_p; /* dma support */
     u32 direction;              /* DMA_MEM_TO_DEV or DMA_DEV_TO_MEM */
 
     struct completion cmp;
     dma_cookie_t cookie;
 };
 
-struct dmadc
-{
-    struct dmadc_channel* channel;
+struct dmadc {
+    struct dmadc_channel *channel;
     struct work_struct work;
 };
 
 /* Handle a callback and indicate the DMA transfer is complete to another
  * thread of control
  */
-static void
-sync_callback(void* completion)
-{
+static void sync_callback(void *completion) {
     /* Indicate the DMA transaction completed to allow the other
      * thread of control to finish processing
      */
@@ -78,13 +76,11 @@ sync_callback(void* completion)
  * engine to be queued and return a cookie that can be used to track that
  * status of the transaction
  */
-static void
-start_transfer(struct dmadc_channel* pchannel_p)
-{
+static void start_transfer(struct dmadc_channel *pchannel_p) {
     enum dma_ctrl_flags flags = DMA_CTRL_ACK | DMA_PREP_INTERRUPT;
-    struct dma_async_tx_descriptor* chan_desc;
+    struct dma_async_tx_descriptor *chan_desc;
 
-    struct dma_device* dma_device = pchannel_p->channel_p->device;
+    struct dma_device *dma_device = pchannel_p->channel_p->device;
 
     chan_desc = dma_device->device_prep_dma_cyclic(
         pchannel_p->channel_p,
@@ -92,7 +88,8 @@ start_transfer(struct dmadc_channel* pchannel_p)
         pchannel_p->buffer_table_p->length,
         pchannel_p->buffer_table_p->period_len,
         pchannel_p->direction,
-        flags);
+        flags
+    );
 
     if (!chan_desc) {
         printk(KERN_ERR "dmaengine_prep*() error\n");
@@ -118,9 +115,7 @@ start_transfer(struct dmadc_channel* pchannel_p)
 
 /* Wait for a DMA transfer that was previously submitted to the DMA engine
  */
-static void
-wait_for_transfer(struct dmadc_channel* pchannel_p)
-{
+static void wait_for_transfer(struct dmadc_channel *pchannel_p) {
     unsigned long timeout = msecs_to_jiffies(DMA_TIMEOUT_MS);
     enum dma_status status;
 
@@ -129,7 +124,8 @@ wait_for_transfer(struct dmadc_channel* pchannel_p)
     /* Wait for the transaction to complete, or timeout, or get an error */
     timeout = wait_for_completion_timeout(&pchannel_p->cmp, timeout);
     status = dma_async_is_tx_complete(
-        pchannel_p->channel_p, pchannel_p->cookie, NULL, NULL);
+        pchannel_p->channel_p, pchannel_p->cookie, NULL, NULL
+    );
 
     if (timeout == 0) {
         pchannel_p->buffer_table_p->status = PROXY_TIMEOUT;
@@ -138,7 +134,8 @@ wait_for_transfer(struct dmadc_channel* pchannel_p)
         pchannel_p->buffer_table_p->status = PROXY_ERROR;
         printk(
             KERN_ERR "DMA returned completion callback status of: %s\n",
-            status == DMA_ERROR ? "error" : "in progress");
+            status == DMA_ERROR ? "error" : "in progress"
+        );
     } else
         pchannel_p->buffer_table_p->status = PROXY_NO_ERROR;
 }
@@ -148,27 +145,24 @@ wait_for_transfer(struct dmadc_channel* pchannel_p)
  * systems such as Zynq 7K or the current default for Zynq MPSOC. MPSOC can be
  * h/w coherent when set up and then the memory will be cached.
  */
-static int
-mmap(struct file* file_p, struct vm_area_struct* vma)
-{
-    struct dmadc_channel* pchannel_p =
-        (struct dmadc_channel*)file_p->private_data;
+static int mmap(struct file *file_p, struct vm_area_struct *vma) {
+    struct dmadc_channel *pchannel_p =
+        (struct dmadc_channel *)file_p->private_data;
 
     return dma_mmap_coherent(
         pchannel_p->dma_device_p,
         vma,
         pchannel_p->buffer_table_p,
         pchannel_p->buffer_phys_addr,
-        vma->vm_end - vma->vm_start);
+        vma->vm_end - vma->vm_start
+    );
 }
 
 /* Open the device file and set up the data pointer to the proxy channel data
  * for the proxy channel such that the ioctl function can access the data
  * structure later.
  */
-static int
-local_open(struct inode* ino, struct file* file)
-{
+static int local_open(struct inode *ino, struct file *file) {
     file->private_data = container_of(ino->i_cdev, struct dmadc_channel, cdev);
 
     return 0;
@@ -176,12 +170,10 @@ local_open(struct inode* ino, struct file* file)
 
 /* Close the file and there's nothing to do for it
  */
-static int
-release(struct inode* ino, struct file* file)
-{
-    struct dmadc_channel* pchannel_p =
-        (struct dmadc_channel*)file->private_data;
-    struct dma_device* dma_device = pchannel_p->channel_p->device;
+static int release(struct inode *ino, struct file *file) {
+    struct dmadc_channel *pchannel_p =
+        (struct dmadc_channel *)file->private_data;
+    struct dma_device *dma_device = pchannel_p->channel_p->device;
 
     dma_device->device_terminate_all(pchannel_p->channel_p);
     return 0;
@@ -192,40 +184,38 @@ release(struct inode* ino, struct file* file)
  * which buffer to use for the transfer.The BD in this case is only a s/w
  * structure for the proxy driver, not related to the hw BD of the DMA.
  */
-static long
-ioctl(struct file* file, unsigned int cmd, unsigned long arg)
-{
-    struct dmadc_channel* pchannel_p =
-        (struct dmadc_channel*)file->private_data;
+static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
+    struct dmadc_channel *pchannel_p =
+        (struct dmadc_channel *)file->private_data;
     switch (cmd) {
-        case START_XFER:
-            start_transfer(pchannel_p);
-            break;
-        case FINISH_XFER:
-            wait_for_transfer(pchannel_p);
-            break;
-        case XFER:
-            start_transfer(pchannel_p);
-            wait_for_transfer(pchannel_p);
-            break;
+    case START_XFER:
+        start_transfer(pchannel_p);
+        break;
+    case FINISH_XFER:
+        wait_for_transfer(pchannel_p);
+        break;
+    case XFER:
+        start_transfer(pchannel_p);
+        wait_for_transfer(pchannel_p);
+        break;
     }
     return 0;
 }
 
-static struct file_operations dm_fops = { .owner = THIS_MODULE,
-                                          .open = local_open,
-                                          .release = release,
-                                          .unlocked_ioctl = ioctl,
-                                          .mmap = mmap };
+static struct file_operations dm_fops = {
+    .owner = THIS_MODULE,
+    .open = local_open,
+    .release = release,
+    .unlocked_ioctl = ioctl,
+    .mmap = mmap
+};
 
 /* Initialize the driver to be a character device such that is responds to
  * file operations.
  */
-static int
-cdevice_init(struct dmadc_channel* pchannel_p)
-{
+static int cdevice_init(struct dmadc_channel *pchannel_p) {
     int rc;
-    static struct class* local_class_p = NULL;
+    static struct class *local_class_p = NULL;
 
     /* Allocate a character device from the kernel for this driver.
      */
@@ -233,7 +223,8 @@ cdevice_init(struct dmadc_channel* pchannel_p)
 
     if (rc) {
         dev_err(
-            pchannel_p->dma_device_p, "unable to get a char device number\n");
+            pchannel_p->dma_device_p, "unable to get a char device number\n"
+        );
         return rc;
     }
 
@@ -264,7 +255,8 @@ cdevice_init(struct dmadc_channel* pchannel_p)
      * as a character device
      */
     pchannel_p->proxy_device_p = device_create(
-        pchannel_p->class_p, NULL, pchannel_p->dev_node, NULL, DRIVER_NAME);
+        pchannel_p->class_p, NULL, pchannel_p->dev_node, NULL, DRIVER_NAME
+    );
 
     if (IS_ERR(pchannel_p->proxy_device_p)) {
         dev_err(pchannel_p->dma_device_p, "unable to create the device\n");
@@ -287,9 +279,7 @@ init_error1:
 /* Exit the character device by freeing up the resources that it created and
  * disconnecting itself from the kernel.
  */
-static void
-cdevice_exit(struct dmadc_channel* pchannel_p)
-{
+static void cdevice_exit(struct dmadc_channel *pchannel_p) {
     /* Take everything down in the reverse order
      * from how it was created for the char device
      */
@@ -305,14 +295,12 @@ cdevice_exit(struct dmadc_channel* pchannel_p)
 
 /* Initialize the DMA ADC device driver module.
  */
-static int
-dmadc_probe(struct platform_device* pdev)
-{
+static int dmadc_probe(struct platform_device *pdev) {
     int rc;
     int channel_count;
-    const char* name;
-    struct dmadc* dma;
-    struct device* dev = &pdev->dev;
+    const char *name;
+    struct dmadc *dma;
+    struct device *dev = &pdev->dev;
 
     printk(KERN_INFO "dmadc module initialized\n");
 
@@ -322,7 +310,8 @@ dmadc_probe(struct platform_device* pdev)
         dev_err(
             dev,
             "Could not get DMA names from device tree. Is 'dma-names' "
-            "present?\n");
+            "present?\n"
+        );
         // channel_count is an error code
         return channel_count;
     }
@@ -330,7 +319,8 @@ dmadc_probe(struct platform_device* pdev)
         dev_err(
             dev,
             "Invalid number of DMA names. Only one DMA channel is "
-            "supported.\n");
+            "supported.\n"
+        );
         return ERROR;
     }
     // Get DMA name from device tree
@@ -339,7 +329,7 @@ dmadc_probe(struct platform_device* pdev)
         return rc;
 
     // Allocate memory for the dmadc struct
-    dma = (struct dmadc*)devm_kmalloc(dev, sizeof(struct dmadc), GFP_KERNEL);
+    dma = (struct dmadc *)devm_kmalloc(dev, sizeof(struct dmadc), GFP_KERNEL);
     if (!dma) {
         dev_err(dev, "Cound not allocate DMADC device\n");
         return -ENOMEM;
@@ -360,11 +350,12 @@ dmadc_probe(struct platform_device* pdev)
     dma->channel->direction = DMA_DEV_TO_MEM;
 
     // Allocate DMA memory that will be shared/mapped by user space
-    dma->channel->buffer_table_p = (struct channel_buffer*)dmam_alloc_coherent(
+    dma->channel->buffer_table_p = (struct channel_buffer *)dmam_alloc_coherent(
         dev,
         sizeof(struct channel_buffer),
         &dma->channel->buffer_phys_addr,
-        GFP_KERNEL);
+        GFP_KERNEL
+    );
     if (!dma->channel->buffer_table_p) {
         dev_err(dev, "DMA allocation error\n");
         return ERROR;
@@ -374,7 +365,8 @@ dmadc_probe(struct platform_device* pdev)
         KERN_INFO
         "Allocating memory, virtual address: %px physical address: %px\n",
         dma->channel->buffer_table_p,
-        (void*)dma->channel->buffer_phys_addr);
+        (void *)dma->channel->buffer_phys_addr
+    );
 
     // Setup chartacter device
     rc = cdevice_init(dma->channel);
@@ -387,11 +379,9 @@ dmadc_probe(struct platform_device* pdev)
 
 /* Exit the dma proxy device driver module.
  */
-static void
-dmadc_remove(struct platform_device* pdev)
-{
-    struct device* dev = &pdev->dev;
-    struct dmadc* dma = dev_get_drvdata(dev);
+static void dmadc_remove(struct platform_device *pdev) {
+    struct device *dev = &pdev->dev;
+    struct dmadc *dma = dev_get_drvdata(dev);
 
     // Exit char device
     cdevice_exit(dma->channel);
@@ -400,11 +390,12 @@ dmadc_remove(struct platform_device* pdev)
     printk(KERN_INFO "dmadc module exited\n");
 }
 
-static const struct of_device_id dmadc_of_ids[] = { {
-                                                        .compatible =
-                                                            "3j14,dmadc",
-                                                    },
-                                                    {} };
+static const struct of_device_id dmadc_of_ids[] = {
+    {
+        .compatible = "3j14,dmadc",
+    },
+    {}
+};
 
 static struct platform_driver dmadc_driver = {
     .driver =
@@ -417,15 +408,11 @@ static struct platform_driver dmadc_driver = {
     .remove = dmadc_remove,
 };
 
-static int __init
-dmadc_init(void)
-{
+static int __init dmadc_init(void) {
     return platform_driver_register(&dmadc_driver);
 }
 
-static void __exit
-dmadc_exit(void)
-{
+static void __exit dmadc_exit(void) {
     platform_driver_unregister(&dmadc_driver);
 }
 
