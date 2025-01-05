@@ -174,7 +174,7 @@ module packetizer (
     assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
                               (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? counter : 0;
     assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
-                              (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 : 2'b10;
+                              (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? 2'b00 : 2'b10;
 
     // AXI4-Lite write logic
     always @(posedge aclk or negedge aresetn) begin
