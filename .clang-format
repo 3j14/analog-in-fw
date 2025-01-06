@@ -10,3 +10,6 @@ AlignAfterOpenBracket: BlockIndent
 BinPackParameters: false
 BinPackArguments: false
 AlignConsecutiveMacros: Consecutive
+IndentCaseBlocks: true
+IndentCaseLabels: true
+AlignEscapedNewlines: Left
