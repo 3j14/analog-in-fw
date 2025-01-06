@@ -15,6 +15,13 @@
  * under the License.
  */
 #pragma once
+
+// Include types.h if compiled as a linux module, else stdint.h
+#ifdef MODULE
+#include <linux/types.h>
+#else
+#include <stdint.h>
+#endif
 #define BUFFER_SIZE (128 * 1024)
 
 #define FINISH_XFER _IOW('a', 'a', int32_t *)
@@ -22,7 +29,7 @@
 #define XFER        _IOR('a', 'c', int32_t *)
 
 struct channel_buffer {
-    unsigned int buffer[BUFFER_SIZE / sizeof(unsigned int)];
+    uint32_t buffer[BUFFER_SIZE / sizeof(uint32_t)];
     enum proxy_status {
         PROXY_NO_ERROR = 0,
         PROXY_BUSY = 1,
