@@ -96,6 +96,7 @@ sudo debootstrap --foreign --include="$DEBIAN_PACKAGES" --arch "$DEBIAN_ARCH" "$
 # Copy modules from Linux Kernel
 sudo mkdir -p -- "$ROOT_DIR/lib"
 sudo cp -r -- "$KERNEL_MOD_DIR/lib/modules" "$ROOT_DIR/lib/"
+echo "dmadc" | sudo tee "$ROOT_DIR/etc/modules-load.d/dmadc.conf" > /dev/null
 # Remove symlink to original build dir (if present)
 sudo rm -rf -- "$ROOT_DIR/lib/modules/$LINUX_VERSION_FULL/build"
 sudo depmod -a -b "$ROOT_DIR" "$LINUX_VERSION_FULL"
