@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#pragma once
 #define BUFFER_SIZE (128 * 1024)
 
 #define FINISH_XFER _IOW('a', 'a', int32_t *)

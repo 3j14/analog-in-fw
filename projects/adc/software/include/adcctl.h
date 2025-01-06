@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define ADC_PWR_EN     (uint8_t)8
@@ -28,6 +29,10 @@
 #define ADC_REG_MODE_32BIT_COM     (uint8_t)2
 #define ADC_REG_MODE_32BIT_AVERAGE (uint8_t)3
 #define ADC_REG_MODE_TEST          (uint8_t)4
+
+#define ADC_STATUS_MODE_CONV            (uint8_t)0
+#define ADC_STATUS_MODE_REG_ACCESS_ONCE (uint8_t)2
+#define ADC_STATUS_MODE_REG_ACCESS      (uint8_t)3
 
 #define ADC_CONFIG_ADDR_RANGE 256
 #define ADC_CONFIG_ADDR       0x40000000
@@ -72,3 +77,8 @@ int close_packetizer(struct packetizer *pack);
 int open_adc_trigger(int fd, struct adc_trigger *trigger);
 int close_adc_trigger(struct adc_trigger *trigger);
 void write_adc_reg(struct adc_config *config, uint32_t data);
+void write_adc_reg(struct adc_config *config, uint32_t data);
+bool get_adc_transaction_active(struct adc_config *config);
+bool get_adc_reg_available(struct adc_config *config);
+uint8_t get_adc_device_mode(struct adc_config *config);
+uint32_t get_adc_last_reg(struct adc_config *config);

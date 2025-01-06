@@ -113,3 +113,23 @@ int close_adc_trigger(struct adc_trigger *trigger) {
 void write_adc_reg(struct adc_config *config, uint32_t data) {
     *(config->adc_reg) = data;
 }
+
+bool get_adc_transaction_active(struct adc_config *config) {
+    // Mask with 0b1
+    return (bool)*(config->status) & 1;
+}
+
+bool get_adc_reg_available(struct adc_config *config) {
+    // Mask with 0b10
+    return (bool)*(config->status) & (1 << 1);
+}
+
+uint8_t get_adc_device_mode(struct adc_config *config) {
+    // Shift by two bits to the right and apply a mask of 0b11
+    return (uint8_t)((*(config->status) >> 2) & 3);
+}
+
+uint32_t get_adc_last_reg(struct adc_config *config) {
+    // Shift by 8 bits to the right to get 'reg_data'
+    return (*(config->status) >> 8);
+}
