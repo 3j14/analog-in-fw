@@ -177,11 +177,15 @@ module adc_trigger (
                 end
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
                     AddrConfig[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, config_reg);
+                        config_reg <= write_register(
+                            s_axi_lite_wdata, s_axi_lite_wstrb, config_reg
+                        );
                         axi_lite_bresp <= 2'b00;
                     end
                     AddrDivider[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, divider_reg);
+                        config_reg <= write_register(
+                            s_axi_lite_wdata, s_axi_lite_wstrb, divider_reg
+                        );
                         axi_lite_bresp <= 2'b00;
                     end
                     default: axi_lite_bresp <= 2'b10;

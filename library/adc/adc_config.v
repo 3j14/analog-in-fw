@@ -194,7 +194,9 @@ module adc_config (
             if (s_axi_lite_wvalid) begin
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
                     AddrConfig[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, config_reg);
+                        config_reg <= write_register(
+                            s_axi_lite_wdata, s_axi_lite_wstrb, config_reg
+                        );
                         axi_lite_bresp <= 2'b00;
                     end
                     AddrStatus[29:2]: begin
@@ -202,7 +204,7 @@ module adc_config (
                         axi_lite_bresp <= 2'b10;
                     end
                     AddrAxis[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, axis_reg);
+                        config_reg <= write_register(s_axi_lite_wdata, s_axi_lite_wstrb, axis_reg);
                         axi_lite_bresp <= 2'b00;
                         axis_tvalid <= 1;
                     end

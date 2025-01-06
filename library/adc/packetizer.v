@@ -185,7 +185,9 @@ module packetizer (
             if (s_axi_lite_wvalid) begin
                 case ((s_axi_lite_awvalid) ? s_axi_lite_awaddr[29:2] : axi_lite_awaddr[29:2])
                     AddrConfig[29:2]: begin
-                        write_register(s_axi_lite_wdata, s_axi_lite_wstrb, config_reg);
+                        config_reg <= write_register(
+                            s_axi_lite_wdata, s_axi_lite_wstrb, config_reg
+                        );
                         axi_lite_bresp <= 2'b00;
                     end
                     // The status register is a read-only register
