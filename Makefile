@@ -97,6 +97,7 @@ SOURCES += $(wildcard constraints/*.tcl)
 EXTRA_EXE := $(basename $(addprefix $(BUILD_DIR)/software/,$(notdir $(wildcard projects/$(PROJECT)/software/*.c))))
 EXTRA_EXE_SOURCES := $(wildcard projects/$(PROJECT)/software/*.[hc])
 EXTRA_EXE_SOURCES += $(wildcard projects/$(PROJECT)/software/include/*.[hc])
+EXTRA_EXE_SOURCES += linux/dma/dmadc.h
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)

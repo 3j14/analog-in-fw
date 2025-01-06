@@ -6,6 +6,8 @@ LOCAL_SYSROOT=0
 SYSROOT ?= $(wildcard /usr/arm-*linux-gnueabihf)
 endif
 
+DMA_DIR := $(abspath ../../../linux/dma)
+
 CC := clang
 CFLAGS := -O0
 CFLAGS += --target=arm-linux-gnueabihf
@@ -20,13 +22,16 @@ CFLAGS += --gcc-toolchain=$(SYSROOT)/../..
 endif
 CFLAGS += -Uarm
 CFLAGS += -Wall
-CFLAGS += -I$(abspath ../../../linux/dma) -I. -Iinclude
+CFLAGS += -I$(DMA_DIR) -I. -Iinclude
 
 SOURCES := $(wildcard *.[ch])
 SOURCES += $(wildcard include/*.[ch])
+SOURCES += $(DMA_DIR)/dmadc.h
 OBJECTS := $(patsubst %.c,%.o,$(wildcard *.c))
 OBJECTS += $(patsubst %.c,%.o,$(wildcard include/*.c))
 
+test:
+	echo $(SOURCES)
 TARGET := adc
 BUILD_DIR ?= .
 
