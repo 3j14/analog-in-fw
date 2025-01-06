@@ -7,7 +7,7 @@
 #define DEFAULT_OUTPUT_FILE "out.dat"
 #define DEFAULT_NUM_SAMPLES 128
 #define MIN_NUM_SAMPLES     128
-#define MAX_NUM_SAMPLES     BUFFER_SIZE / sizeof(uint32_t)
+#define MAX_NUM_SAMPLES     BUFFER_SIZE
 
 #define INFO_MUTUALLY_EXCLUSIVE_ERROR \
     "--info is mutually exclusive with --output and --num"
@@ -35,7 +35,8 @@ const struct argp_option options[] = {
      'n',
      "count",
      0,
-     "Number of samples (min. " to_string(DEFAULT_NUM_SAMPLES
+     "Number of samples (min. " to_string(MIN_NUM_SAMPLES
+     ) ", max. " to_string(MAX_NUM_SAMPLES
      ) ", defaults to " to_string(DEFAULT_NUM_SAMPLES) ")"},
     {0}
 };

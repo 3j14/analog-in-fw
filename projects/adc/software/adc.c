@@ -112,17 +112,12 @@ int main(int argc, char *argv[]) {
         write_adc_reg(&adc.config, ADC_REG_EXIT);
         sleep(1);
 
+        *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
-        *adc.pack.config = channel.buffer->period_len;
+        *adc.pack.config = args.num;
         *adc.trigger.divider = 50;
 
-        printf("period_len: %u\n", (size_t)channel.buffer->period_len);
-        printf("buf_len: %u\n", (size_t)channel.buffer->length);
-        printf(
-            "num_periods: %u\n",
-            (size_t)(channel.buffer->length / channel.buffer->period_len)
-        );
-
+        printf("Transfer size: %u\n", args.num);
         printf("Start transfer\n");
 
         sleep(1);
@@ -130,8 +125,9 @@ int main(int argc, char *argv[]) {
         ioctl(channel.fd, START_XFER);
         ioctl(channel.fd, FINISH_XFER);
         // TODO: Write to file instead of print
-        for (int i = 0; i < channel.buffer->period_len; i++) {
-            printf("%d\n", channel.buffer->buffer[0]);
+        for (int i = 0; i < channel.buffer->period_len / sizeof(uint32_t);
+             i++) {
+            printf("0x%X\n", channel.buffer->buffer[0]);
         }
         close_dma_channel(&channel);
     }
