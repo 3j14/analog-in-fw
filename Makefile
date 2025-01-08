@@ -29,6 +29,13 @@
 #		- project: Vivado FPGA project
 #		- clean: Clean all build files
 #
+#	Other image targets:
+#		- image-base
+#		- image-boot
+#		- image-kernel
+#		- image-software
+#		- image-fpga
+#
 SHELL=/bin/bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
@@ -57,7 +64,7 @@ DEVICE_TREE_VER ?= $(VIVADO_VERSION)
 DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
 SSBL_VERSION ?= 20231206
 SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
-LINUX_VERSION_FULL ?= 6.12.5
+LINUX_VERSION_FULL ?= 6.12.6
 LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
 LINUX_MOD_DIR := build/kernel/lib/modules/$(LINUX_VERSION_FULL)-xilinx
@@ -141,11 +148,27 @@ clean:
 	$(MAKE) -C ./linux/dma clean
 	rm -rf -- build .Xil _ide vivado_*.str
 
-build/red-pitaya-debian-bookworm-armhf.img: build/boot.bin build/zImage.bin build/fpgautil $(EXTRA_EXE) $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo $(LINUX_MOD_DIR)/updates/dmadc.ko $(LINUX_MOD_DIR)/modules.order
-	# Build the Linux image
-	# The script may ask you for your password as administrator
-	# privileges are required for some operations.
-	./scripts/image.sh $(PROJECT) $(LINUX_VERSION) $(EXTRA_EXE)
+.PHONY: image-base image-boot image-kernel image-software image-fpga
+.NOTPARALLEL: image-base image-boot image-kernel image-software image-fpga
+image-base: build/image/red-pitaya-debian-bookworm-armhf-base.img
+
+image-boot: image-base build/boot.bin
+	./scripts/image.sh boot $(PROJECT)
+
+image-kernel: image-base $(LINUX_MOD_DIR)/updates/dmadc.ko $(LINUX_MOD_DIR)/modules.order
+	./scripts/image.sh kernel $(PROJECT) -l ./build/linux-$(LINUX_VERSION)
+
+image-software: image-base build/fpgautil $(EXTRA_EXE) ./linux/resize-sd
+	./scripts/image.sh software $(PROJECT) $(EXTRA_EXE)
+
+image-fpga: image-base $(BUILD_DIR)/$(PROJECT).bin $(BUILD_DIR)/pl.dtbo
+	./scripts/image.sh fpga $(PROJECT)
+
+build/image/red-pitaya-debian-bookworm-armhf-base.img:
+	./scripts/image.sh base $(PROJECT)
+
+
+build/red-pitaya-debian-bookworm-armhf.img: image-base image-boot image-kernel image-software image-fpga
 
 build/boot.bin: build/rootfs.dtb build/ssbl.elf build/fsbl.elf build/zImage.bin $(BUILD_DIR)/$(PROJECT).bit
 	# Generate the boot.bin file using 'bootgen'
