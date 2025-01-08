@@ -166,6 +166,7 @@ module adc_trigger (
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
             divider_reg <= 0;
+            config_reg <= 0;
             axi_lite_bresp <= 2'b00;
         end else begin
             if (s_axi_lite_wvalid) begin
