@@ -204,7 +204,7 @@ module adc_config (
                         axi_lite_bresp <= 2'b10;
                     end
                     AddrAxis[29:2]: begin
-                        config_reg <= write_register(s_axi_lite_wdata, s_axi_lite_wstrb, axis_reg);
+                        axis_reg <= write_register(s_axi_lite_wdata, s_axi_lite_wstrb, axis_reg);
                         axi_lite_bresp <= 2'b00;
                         axis_tvalid <= 1;
                     end

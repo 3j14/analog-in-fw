@@ -183,7 +183,7 @@ module adc_trigger (
                         axi_lite_bresp <= 2'b00;
                     end
                     AddrDivider[29:2]: begin
-                        config_reg <= write_register(
+                        divider_reg <= write_register(
                             s_axi_lite_wdata, s_axi_lite_wstrb, divider_reg
                         );
                         axi_lite_bresp <= 2'b00;
