@@ -89,6 +89,7 @@ int main(int argc, char *argv[]) {
         printf("adc_config device_mode:         %s\n", dev_mode_str);
         printf("adc_config last_reg:            0x%X\n", last_reg);
         printf("adc_config config:              0x%X\n", *adc.config.config);
+        printf("adc_config axis_reg:            0x%X\n", *adc.config.adc_reg);
         printf("packetizer config:              %u\n", *adc.pack.config);
         printf("packetizer status (counter):    %u\n", *adc.pack.status);
         printf("adc_trigger config:             %s\n", trigger_config_str);
@@ -110,7 +111,6 @@ int main(int argc, char *argv[]) {
                        ADC_REG_MODE_SDR | ADC_REG_MODE_TEST;
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
         write_adc_reg(&adc.config, ADC_REG_EXIT);
-        sleep(1);
 
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
@@ -118,9 +118,8 @@ int main(int argc, char *argv[]) {
         *adc.trigger.divider = 50;
 
         printf("Transfer size: %u\n", args.num);
-        printf("Start transfer\n");
-
         sleep(1);
+        printf("Start transfer\n");
 
         ioctl(channel.fd, START_XFER);
         ioctl(channel.fd, FINISH_XFER);
@@ -130,6 +129,7 @@ int main(int argc, char *argv[]) {
             printf("0x%X\n", channel.buffer->buffer[0]);
         }
         close_dma_channel(&channel);
+        adc.trigger.divider = 0;
     }
     close_adc(&adc);
 }
