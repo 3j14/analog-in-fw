@@ -64,11 +64,11 @@ set_property SLEW FAST [get_ports exp_adc_csn]
 set_property SLEW FAST [get_ports exp_adc_resetn]
 set_property SLEW FAST [get_ports exp_adc_sck]
 set_property SLEW FAST [get_ports exp_adc_sdo]
-set_property DRIVE 8 [get_ports exp_adc_cnv]
-set_property DRIVE 8 [get_ports exp_adc_csn]
-set_property DRIVE 8 [get_ports exp_adc_resetn]
-set_property DRIVE 8 [get_ports exp_adc_sck]
-set_property DRIVE 8 [get_ports exp_adc_sdo]
+set_property DRIVE 12 [get_ports exp_adc_cnv]
+set_property DRIVE 12 [get_ports exp_adc_csn]
+set_property DRIVE 12 [get_ports exp_adc_resetn]
+set_property DRIVE 12 [get_ports exp_adc_sck]
+set_property DRIVE 12 [get_ports exp_adc_sdo]
 # SPI
 set_property PACKAGE_PIN G17 [get_ports exp_adc_csn]
 set_property PACKAGE_PIN G18 [get_ports exp_adc_resetn]
@@ -101,6 +101,7 @@ set_property PACKAGE_PIN L17 [get_ports exp_adc_debug]
 # make_diff_pair_ports daisy_p_o[1] daisy_n_o[1]
 # make_diff_pair_ports daisy_p_i[0] daisy_n_i[0]
 # make_diff_pair_ports daisy_p_i[1] daisy_n_i[1]
+
 
 
 
