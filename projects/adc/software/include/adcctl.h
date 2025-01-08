@@ -3,11 +3,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define ADC_PWR_EN     (uint8_t)8
-#define ADC_REF_EN     (uint8_t)16
-#define ADC_IO_EN      (uint8_t)32
-#define ADC_DIFFAMP_EN (uint8_t)64
-#define ADC_OPAMP_EN   (uint8_t)128
+#define ADC_PWR_EN     (uint8_t)1 << 3
+#define ADC_REF_EN     (uint8_t)1 << 4
+#define ADC_IO_EN      (uint8_t)1 << 5
+#define ADC_DIFFAMP_EN (uint8_t)1 << 6
+#define ADC_OPAMP_EN   (uint8_t)1 << 7
 
 // Helper to create ADC register read/write commands
 #define ADC_REG(read, addr, data) (uint32_t)((read << 23) | (addr << 8) | data)
