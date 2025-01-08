@@ -208,7 +208,7 @@ build/fsbl.elf: $(BUILD_DIR)/fsbl/zynq_fsbl
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
 	cp $</build/fsbl.elf $@
 
-$(BUILD_DIR)/fsbl/zynq_fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+$(BUILD_DIR)/fsbl/zynq_fsbl: $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
 	# Remove fsbl directory to prevent errors when creating the sources
 	rm -rf -- $(@D)
 	# Prepare the FSBL sources using the Vitis Unified IDE
@@ -225,7 +225,7 @@ build/device-tree-xlnx:
 	mkdir -p $@
 	curl -L --output - $(DEVICE_TREE_TARBALL) | tar xz --strip-components 1 -C $@
 
-$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr
+$(BUILD_DIR)/$(PROJECT).xsa: $(BUILD_DIR)/$(PROJECT).xpr | $(BUILD_DIR)/$(PROJECT).runs/impl_1
 	# Generate the Xilinx support archive for the current project
 	$(VIVADO) $(VIVADO_ARGS) -source scripts/xsa.tcl -tclargs $(PROJECT)
 
