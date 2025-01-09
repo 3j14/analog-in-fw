@@ -22,7 +22,8 @@
 #else
 #include <stdint.h>
 #endif
-#define BUFFER_SIZE (128 * 1024)
+#define BUFFER_COUNT 1024
+#define BUFFER_SIZE  (128 * 1024)
 
 #define FINISH_XFER _IOW('a', 'a', int32_t *)
 #define START_XFER  _IOW('a', 'b', int32_t *)

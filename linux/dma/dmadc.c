@@ -33,7 +33,9 @@
 #include "dmadc.h"
 #include "linux/dev_printk.h"
 #include "linux/kern_levels.h"
+#include "linux/mm.h"
 #include "linux/property.h"
+#include "linux/scatterlist.h"
 
 #define DRIVER_NAME    "dmadc"
 #define RX_CHANNEL     1
@@ -41,11 +43,15 @@
 #define DMA_TIMEOUT_MS 3000
 
 struct dmadc_channel {
-    struct channel_buffer *buffer_table_p; /* user to kernel space interface */
+    struct channel_buffer *buffer_tables[BUFFER_COUNT];
     dma_addr_t buffer_phys_addr;
+    /* Scatterlist for each buffer */
+    struct scatterlist sglists[BUFFER_COUNT];
+    /* Number of buffers used */
+    u32 sg_len;
 
-    struct device *proxy_device_p; /* character device support */
-    struct device *dma_device_p;
+    struct device *dmadc_dev; /* character device support */
+    struct device *dma_dev;
     dev_t dev_node;
     struct cdev cdev;
     struct class *class_p;
@@ -150,7 +156,7 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma) {
         (struct dmadc_channel *)file_p->private_data;
 
     return dma_mmap_coherent(
-        pchannel_p->dma_device_p,
+        pchannel_p->dma_dev,
         vma,
         pchannel_p->buffer_table_p,
         pchannel_p->buffer_phys_addr,
@@ -188,16 +194,16 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
     struct dmadc_channel *pchannel_p =
         (struct dmadc_channel *)file->private_data;
     switch (cmd) {
-    case START_XFER:
-        start_transfer(pchannel_p);
-        break;
-    case FINISH_XFER:
-        wait_for_transfer(pchannel_p);
-        break;
-    case XFER:
-        start_transfer(pchannel_p);
-        wait_for_transfer(pchannel_p);
-        break;
+        case START_XFER:
+            start_transfer(pchannel_p);
+            break;
+        case FINISH_XFER:
+            wait_for_transfer(pchannel_p);
+            break;
+        case XFER:
+            start_transfer(pchannel_p);
+            wait_for_transfer(pchannel_p);
+            break;
     }
     return 0;
 }
@@ -222,9 +228,7 @@ static int cdevice_init(struct dmadc_channel *pchannel_p) {
     rc = alloc_chrdev_region(&pchannel_p->dev_node, 0, 1, DRIVER_NAME);
 
     if (rc) {
-        dev_err(
-            pchannel_p->dma_device_p, "unable to get a char device number\n"
-        );
+        dev_err(pchannel_p->dma_dev, "unable to get a char device number\n");
         return rc;
     }
 
@@ -236,7 +240,7 @@ static int cdevice_init(struct dmadc_channel *pchannel_p) {
     rc = cdev_add(&pchannel_p->cdev, pchannel_p->dev_node, 1);
 
     if (rc) {
-        dev_err(pchannel_p->dma_device_p, "unable to add char device\n");
+        dev_err(pchannel_p->dma_dev, "unable to add char device\n");
         goto init_error1;
     }
 
@@ -244,7 +248,7 @@ static int cdevice_init(struct dmadc_channel *pchannel_p) {
         local_class_p = class_create(DRIVER_NAME);
 
         if (IS_ERR(local_class_p)) {
-            dev_err(pchannel_p->dma_device_p, "unable to create class\n");
+            dev_err(pchannel_p->dma_dev, "unable to create class\n");
             rc = ERROR;
             goto init_error2;
         }
@@ -254,12 +258,12 @@ static int cdevice_init(struct dmadc_channel *pchannel_p) {
     /* Create the device node in /dev so the device is accessible
      * as a character device
      */
-    pchannel_p->proxy_device_p = device_create(
+    pchannel_p->dmadc_dev = device_create(
         pchannel_p->class_p, NULL, pchannel_p->dev_node, NULL, DRIVER_NAME
     );
 
-    if (IS_ERR(pchannel_p->proxy_device_p)) {
-        dev_err(pchannel_p->dma_device_p, "unable to create the device\n");
+    if (IS_ERR(pchannel_p->dmadc_dev)) {
+        dev_err(pchannel_p->dma_dev, "unable to create the device\n");
         goto init_error3;
     }
 
@@ -283,7 +287,7 @@ static void cdevice_exit(struct dmadc_channel *pchannel_p) {
     /* Take everything down in the reverse order
      * from how it was created for the char device
      */
-    if (pchannel_p->proxy_device_p) {
+    if (pchannel_p->dmadc_dev) {
         device_destroy(pchannel_p->class_p, pchannel_p->dev_node);
     }
     if (pchannel_p->class_p) {
@@ -296,7 +300,7 @@ static void cdevice_exit(struct dmadc_channel *pchannel_p) {
 /* Initialize the DMA ADC device driver module.
  */
 static int dmadc_probe(struct platform_device *pdev) {
-    int rc;
+    int rc, i;
     int channel_count;
     const char *name;
     struct dmadc *dma;
@@ -346,27 +350,36 @@ static int dmadc_probe(struct platform_device *pdev) {
         return PTR_ERR(dma->channel->channel_p);
     }
 
-    dma->channel->dma_device_p = dev;
+    dma->channel->dma_dev = dev;
     dma->channel->direction = DMA_DEV_TO_MEM;
 
-    // Allocate DMA memory that will be shared/mapped by user space
-    dma->channel->buffer_table_p = (struct channel_buffer *)dmam_alloc_coherent(
-        dev,
-        sizeof(struct channel_buffer),
-        &dma->channel->buffer_phys_addr,
-        GFP_KERNEL
-    );
-    if (!dma->channel->buffer_table_p) {
-        dev_err(dev, "DMA allocation error\n");
-        return ERROR;
+    for (i = 0; i < BUFFER_COUNT; i++) {
+        // Allocate DMA memory that will be shared/mapped by user space
+        dma->channel->buffer_tables[i] =
+            (struct channel_buffer *)dmam_alloc_coherent(
+                dev,
+                sizeof(struct channel_buffer),
+                &dma->channel->buffer_phys_addr,
+                GFP_KERNEL
+            );
+        if (!dma->channel->buffer_tables[i]) {
+            dev_err(dev, "DMA allocation error\n");
+            return ERROR;
+        }
+        printk(
+            KERN_INFO
+            "Allocating memory, virtual address: %px physical address: %px\n",
+            dma->channel->buffer_tables[i],
+            (void *)dma->channel->buffer_phys_addr
+        );
+        sg_set_page(
+            &dma->channel->sglists[i],
+            virt_to_page(dma->channel->buffer_tables[i]->buffer),
+            BUFFER_SIZE,
+            offset_in_page(dma->channel->buffer_tables[i]->buffer)
+        );
     }
-
-    printk(
-        KERN_INFO
-        "Allocating memory, virtual address: %px physical address: %px\n",
-        dma->channel->buffer_table_p,
-        (void *)dma->channel->buffer_phys_addr
-    );
+    dma->channel->sg_len = BUFFER_COUNT;
 
     // Setup chartacter device
     rc = cdevice_init(dma->channel);
