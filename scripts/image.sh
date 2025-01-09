@@ -155,7 +155,7 @@ format_partitions() {
     echo "Format partitions '$BOOT_PART' and '$ROOT_PART'"
     # Make the file systems
     sudo mkfs.vfat -v "$BOOT_PART" > /dev/null
-    sudo mkfs.ext4 -F -j "$ROOT_PART" /dev/null
+    sudo mkfs.ext4 -F -j "$ROOT_PART" > /dev/null
 }
 
 mount_boot() {
