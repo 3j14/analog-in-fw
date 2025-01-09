@@ -80,10 +80,12 @@ cleanup() {
     # Unmount all devices and delete temporary directories
     if [[ -v BOOT_DIR ]]; then
         sudo umount "$BOOT_DIR"
+        sudo rm -r -- "$BOOT_DIR"
         unset -v BOOT_DIR
     fi
     if [[ -v ROOT_DIR ]]; then
         sudo umount "$ROOT_DIR"
+        sudo rm -r -- "$ROOT_DIR"
         unset -v ROOT_DIR
     fi
     # Remove the loop device
