@@ -116,12 +116,12 @@ void write_adc_reg(struct adc_config *config, uint32_t data) {
 
 bool get_adc_transaction_active(struct adc_config *config) {
     // Mask with 0b1
-    return (bool)*(config->status) & 1;
+    return (bool)(*(config->status) & 1);
 }
 
 bool get_adc_reg_available(struct adc_config *config) {
     // Mask with 0b10
-    return (bool)*(config->status) & (1 << 1);
+    return (bool)(*(config->status) & (1 << 1));
 }
 
 uint8_t get_adc_device_mode(struct adc_config *config) {
