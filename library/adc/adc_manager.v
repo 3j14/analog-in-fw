@@ -74,7 +74,8 @@ module adc_manager #(
     assign status[0] = transaction_active;
     assign status[1] = reg_available;
     assign status[3:2] = device_mode;
-    assign status[7:4] = 0;
+    assign status[4] = m_axis_tvalid;
+    assign status[7:5] = 0;
     assign status[31:8] = reg_data;
 
     always @(posedge aclk or negedge aresetn) begin
