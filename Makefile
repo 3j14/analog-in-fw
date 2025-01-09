@@ -208,7 +208,7 @@ build/fsbl.elf: $(BUILD_DIR)/fsbl/zynq_fsbl
 	$(VITIS) --source scripts/fsbl.py build $(PROJECT)
 	cp $</build/fsbl.elf $@
 
-$(BUILD_DIR)/fsbl/zynq_fsbl: $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
+$(BUILD_DIR)/fsbl/zynq_fsbl: $(BUILD_DIR)/$(PROJECT).xsa $(RPN_DIR)/patches/red_pitaya_fsbl_hooks.c $(RPN_DIR)/patches/fsbl.patch
 	# Remove fsbl directory to prevent errors when creating the sources
 	rm -rf -- $(@D)
 	# Prepare the FSBL sources using the Vitis Unified IDE
