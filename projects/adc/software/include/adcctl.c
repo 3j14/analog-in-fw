@@ -124,6 +124,11 @@ bool get_adc_reg_available(struct adc_config *config) {
     return (bool)(*(config->status) & (1 << 1));
 }
 
+bool get_adc_tvalid(struct adc_config *config) {
+    // Mask with 0b1000
+    return (bool)(*(config->status) & (1 << 4));
+}
+
 uint8_t get_adc_device_mode(struct adc_config *config) {
     // Shift by two bits to the right and apply a mask of 0b11
     return (uint8_t)((*(config->status) >> 2) & 3);
@@ -132,4 +137,18 @@ uint8_t get_adc_device_mode(struct adc_config *config) {
 uint32_t get_adc_last_reg(struct adc_config *config) {
     // Shift by 8 bits to the right to get 'reg_data'
     return (*(config->status) >> 8);
+}
+
+int set_packatizer_save(struct packetizer *pack, uint32_t value) {
+    if (*pack->config == value) {
+        // No need to update, already set to desired value
+        return 0;
+    }
+    if (*pack->status != 0) {
+        // Unable to update, packetizer does not allow writes to the config
+        // register when the counter is not 0.
+        return -1;
+    }
+    *pack->config = value;
+    return 0;
 }

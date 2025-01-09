@@ -7,6 +7,7 @@ module adc_trigger (
     output wire        cnv,
     input  wire        busy,
     input  wire        last,
+    input  wire        ready,
     // AXI4-Lite subordinate
     input  wire [31:0] s_axi_lite_awaddr,
     input  wire [ 2:0] s_axi_lite_awprot,
@@ -203,7 +204,8 @@ module adc_trigger (
         .trigger(trigger),
         .cnv(cnv),
         .busy(busy),
-        .last(last)
+        .last(last),
+        .ready(ready)
     );
 endmodule
 
@@ -215,7 +217,8 @@ module adc_trigger_impl (
     output reg         trigger = 0,
     output wire        cnv,
     input  wire        busy,
-    input  wire        last
+    input  wire        last,
+    input  wire        ready
 );
     localparam reg [1:0] StateIdle = 2'b00;
     localparam reg [1:0] StateRun = 2'b10;
@@ -259,7 +262,8 @@ module adc_trigger_impl (
     end
 
     // state_clk[1] is only set if the current state is 'StateRun'
-    assign cnv = state_clk[1] & (counter == divider) & |counter;
+    // and downstream devices are ready
+    assign cnv = ready & state_clk[1] & (counter == divider) & |counter;
 
     // Technically, 'busy' is not aligned with the clock. However,
     // the busy signal is usually high for more than 200 ns,
@@ -269,7 +273,9 @@ module adc_trigger_impl (
         if (!resetn) begin
             adc_busy <= 0;
         end else begin
-            if (adc_busy && !busy) begin
+            if (adc_busy && !busy && ready) begin
+                // ADC was previously busy but is now done, and downstream
+                // devices are ready to recieve data.
                 adc_busy <= 0;
                 trigger  <= 1;
             end else begin

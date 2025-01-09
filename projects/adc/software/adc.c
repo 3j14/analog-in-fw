@@ -66,8 +66,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (args.info) {
-        bool transaction_active = get_adc_transaction_active(&adc.config);
+        bool trans_active = get_adc_transaction_active(&adc.config);
         bool reg_available = get_adc_reg_available(&adc.config);
+        bool tvalid = get_adc_tvalid(&adc.config);
         uint8_t dev_mode = get_adc_device_mode(&adc.config);
         char *dev_mode_str =
             (dev_mode == ADC_STATUS_MODE_CONV)              ? "conv"
@@ -82,10 +83,9 @@ int main(int argc, char *argv[]) {
 
         uint32_t last_reg = get_adc_last_reg(&adc.config);
         puts("ADC Status:");
-        printf(
-            "adc_config transaction_active:  %s\n", yesno(transaction_active)
-        );
+        printf("adc_config transaction_active:  %s\n", yesno(trans_active));
         printf("adc_config reg_available:       %s\n", yesno(reg_available));
+        printf("adc_config tvalid:              %s\n", yesno(tvalid));
         printf("adc_config device_mode:         %s\n", dev_mode_str);
         printf("adc_config last_reg:            0x%X\n", last_reg);
         printf("adc_config config:              0x%X\n", *adc.config.config);
@@ -103,33 +103,38 @@ int main(int argc, char *argv[]) {
         channel.buffer->length = BUFFER_SIZE;
         channel.buffer->period_len = args.num * sizeof(uint32_t);
 
+        // Enable power
         *adc.config.config = ADC_PWR_EN | ADC_IO_EN;
-        // Wait one second for power to stabilize
-        sleep(1);
+        // Wait for power to stabilize
+        usleep(250);
+
+        // Configure ADC
         write_adc_reg(&adc.config, ADC_REG_ENTER);
         uint8_t mode = ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK |
                        ADC_REG_MODE_SDR | ADC_REG_MODE_TEST;
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
         write_adc_reg(&adc.config, ADC_REG_EXIT);
 
+        // Configure trigger
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
-        *adc.pack.config = args.num;
         *adc.trigger.divider = 50;
-
         printf("Transfer size: %u\n", args.num);
-        sleep(1);
         printf("Start transfer\n");
 
         ioctl(channel.fd, START_XFER);
+
+        // Configure packetizer
+        set_packatizer_save(&adc.pack, args.num);
+
         ioctl(channel.fd, FINISH_XFER);
         // TODO: Write to file instead of print
-        for (int i = 0; i < channel.buffer->period_len / sizeof(uint32_t);
-             i++) {
+        for (int i = 0; i < args.num; i++) {
             printf("0x%X\n", channel.buffer->buffer[0]);
         }
         close_dma_channel(&channel);
-        adc.trigger.divider = 0;
+        *adc.trigger.divider = 0;
+        set_packatizer_save(&adc.pack, args.num);
     }
     close_adc(&adc);
 }

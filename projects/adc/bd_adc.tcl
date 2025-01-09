@@ -143,6 +143,7 @@ connect_bd_intf_net [get_bd_intf_pins adc_manager/m_axis] [get_bd_intf_pins pack
 connect_bd_net $adc_clk [get_bd_pins adc_trigger/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins adc_trigger/aresetn]
 connect_bd_net [get_bd_pins packetizer/last] [get_bd_pins adc_trigger/last]
+connect_bd_net [get_bd_pins packetizer/ready] [get_bd_pins adc_trigger/ready]
 connect_bd_net [get_bd_pins adc_trigger/trigger] [get_bd_pins adc_manager/trigger]
 connect_bd_net [get_bd_ports exp_adc_cnv] [get_bd_pins adc_trigger/cnv]
 connect_bd_net [get_bd_ports exp_adc_busy] [get_bd_pins adc_trigger/busy]

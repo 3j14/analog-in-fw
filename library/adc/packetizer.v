@@ -12,8 +12,9 @@ module packetizer (
     output wire        m_axis_s2mm_tvalid,
     input  wire        m_axis_s2mm_tready,
     output wire        m_axis_s2mm_tlast,
-    // Additional 'tlast' output to trigger other modules
+    // Additional 'tlast' and 'ready' output to trigger other modules
     output wire        last,
+    output wire        ready,
     // AXI4-Lite configuration subordinate
     input  wire [31:0] s_axi_lite_awaddr,
     input  wire [ 2:0] s_axi_lite_awprot,
@@ -213,7 +214,8 @@ module packetizer (
         .config_reg(config_reg),
         .counter(counter)
     );
-    assign last = m_axis_s2mm_tlast;
+    assign last  = m_axis_s2mm_tlast;
+    assign ready = s_axis_data_tready;
 endmodule
 
 module packetizer_s2mm (

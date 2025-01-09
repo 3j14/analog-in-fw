@@ -80,5 +80,7 @@ void write_adc_reg(struct adc_config *config, uint32_t data);
 void write_adc_reg(struct adc_config *config, uint32_t data);
 bool get_adc_transaction_active(struct adc_config *config);
 bool get_adc_reg_available(struct adc_config *config);
+bool get_adc_tvalid(struct adc_config *config);
 uint8_t get_adc_device_mode(struct adc_config *config);
 uint32_t get_adc_last_reg(struct adc_config *config);
+int set_packatizer_save(struct packetizer *pack, uint32_t value);

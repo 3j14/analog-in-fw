@@ -30,6 +30,7 @@ module adc_trigger_tb #(
     wire cnv;
     wire busy;
     bit last = 0;
+    bit ready = 0;
     reg [31:0] divider = 0;
     reg [31:0] cfg = 0;
     wire trigger;
@@ -48,7 +49,8 @@ module adc_trigger_tb #(
         .trigger(trigger),
         .cnv(cnv),
         .busy(busy),
-        .last(last)
+        .last(last),
+        .ready(ready)
     );
 
     always #(Period) clk <= ~clk;
@@ -67,6 +69,9 @@ module adc_trigger_tb #(
     initial begin
         #(4 * Period) @(posedge clk) resetn = 1;
         #(10 * Period) @(posedge clk) divider = 50;
+        #(divider * 2 * Period);
+        @(posedge clk) if (cnv) $error("Conversion triggered (not ready)");
+        #(2 * Period) @(posedge clk) ready = 1;
         #(divider * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");
         @(negedge busy);
