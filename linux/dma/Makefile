@@ -14,7 +14,7 @@ modules_install: default
 	$(MAKE) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) -C $(KERNEL_DIR) $(MAKE_FLAGS) modules_install M=$$PWD
 
 clean:
-	$(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD clean
+	if [ -d "$(KERNEL_DIR)" ]; then $(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD clean; fi
 
 .PHONY: default modules_install clean
 
