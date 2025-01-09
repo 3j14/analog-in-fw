@@ -9,3 +9,4 @@ _ide
 *_journal.py~
 .rigel_looper
 *.elf
+wget-log*
