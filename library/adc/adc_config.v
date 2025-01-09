@@ -84,6 +84,7 @@ module adc_config (
     localparam reg [1:0] StateRaddr = 2'b01;
     localparam reg [1:0] StateRdata = 2'b11;
     localparam reg [1:0] StateWaddr = 2'b01;
+    localparam reg [1:0] StateBresp = 2'b10;
     localparam reg [1:0] StateWdata = 2'b11;
 
     reg [1:0] state_write = StateIdle;
@@ -95,44 +96,44 @@ module adc_config (
         if (!aresetn) begin
             axi_lite_awready <= 0;
             axi_lite_wready <= 0;
-            axi_lite_bvalid <= 0;
             axi_lite_awaddr <= 0;
             state_write <= StateIdle;
         end else begin
             case (state_write)
                 StateIdle: begin
-                    axi_lite_awready <= 1;
-                    axi_lite_wready <= 1;
-                    state_write <= StateWaddr;
+                    if (!axis_tvalid) begin
+                        // Only allow AXI4-Lite write if AXI-Stream is not
+                        // waiting.
+                        axi_lite_awready <= 1;
+                        axi_lite_wready  <= 1;
+                        state_write      <= StateWaddr;
+                    end
                 end
                 StateWaddr: begin
                     if (s_axi_lite_awvalid && s_axi_lite_awready) begin
-                        axi_lite_awaddr <= s_axi_lite_awaddr;
-                        if (s_axi_lite_wvalid) begin
+                        axi_lite_awready <= 0;
+                        axi_lite_awaddr  <= s_axi_lite_awaddr;
+                        if (s_axi_lite_wvalid && axi_lite_wready) begin
+                            axi_lite_wready <= 0;
                             // Set address and write is performed at the same
                             // time, address is available from the
                             // s_axi_lite_awaddr input.
-                            axi_lite_awready <= 1;
-                            state_write <= StateWaddr;
-                            axi_lite_bvalid <= 1;
+                            state_write <= StateBresp;
                         end else begin
-                            // Write will be performed in the upcoming cycles,
-                            // disable axi_lite_bvalid if it has been read.
-                            axi_lite_awready <= 0;
+                            // Write will be performed in the upcoming cycles
                             state_write <= StateWdata;
-                            if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                         end
-                    end else begin
-                        if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                     end
                 end
                 StateWdata: begin
                     if (s_axi_lite_wvalid && axi_lite_wready) begin
-                        state_write <= StateWaddr;
-                        axi_lite_bvalid <= 1;
-                        axi_lite_awready <= 1;
-                    end else begin
-                        if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
+                        axi_lite_wready <= 0;
+                        state_write <= StateBresp;
+                    end
+                end
+                StateBresp: begin
+                    if (!axi_lite_bvalid) begin
+                        state_write <= StateIdle;
                     end
                 end
                 default: state_write <= StateIdle;
@@ -187,7 +188,11 @@ module adc_config (
             axis_reg <= 0;
             axis_tvalid <= 0;
             axi_lite_bresp <= 2'b00;
+            axi_lite_bvalid <= 0;
         end else begin
+            if (s_axi_lite_bready && axi_lite_bvalid) begin
+                axi_lite_bvalid <= 0;
+            end
             if (axis_tvalid && m_axis_tready) begin
                 axis_tvalid <= 0;
             end
@@ -210,6 +215,7 @@ module adc_config (
                     end
                     default: axi_lite_bresp <= 2'b10;
                 endcase
+                axi_lite_bvalid <= 1;
             end
         end
     end
