@@ -17,7 +17,7 @@ int open_dma_channel(struct dmadc_channel *channel) {
     }
     // Map the buffer from kernel to user space
     channel->buffer = (uint32_t *)mmap(
-        NULL, BUFFER_COUNT * BUFFER_SIZE, PROT_READ, MAP_SHARED, channel->fd, 0
+        NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, channel->fd, 0
     );
     if (channel->buffer == MAP_FAILED) {
         fprintf(stderr, "Unable to map memory from kernel\n");
@@ -27,7 +27,7 @@ int open_dma_channel(struct dmadc_channel *channel) {
 }
 
 int close_dma_channel(struct dmadc_channel *channel) {
-    munmap(channel->buffer, BUFFER_SIZE * BUFFER_COUNT);
+    munmap(channel->buffer, BUFFER_SIZE);
     // Close file descriptor for "/dev/dmadc". Any error returned from this
     // is ignored for now. If the file is no longer open, we don't care.
     close(channel->fd);

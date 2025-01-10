@@ -161,17 +161,22 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma) {
     // Size of the memroy allocation. May be larger than the size of a single
     // buffer, so we iterate over all buffers and allocate as much memory as
     // needed.
+    // FIXME: Somehow this is equal to the pagesize when requesting a size
+    // smaller than the pagesize. Maybe find a better way?
     size = vma->vm_end - vma->vm_start;
 
-    if (size > BUFFER_COUNT * BUFFER_SIZE)
-        // Requested memory range is too large
+    if (size > BUFFER_COUNT * BUFFER_SIZE) {
+        printk(KERN_ERR "Requested memory range is too large\n");
         return -EINVAL;
+    }
 
     for (i = 0; i < BUFFER_COUNT; i++) {
+        printk(KERN_INFO "size left: %d", size);
         if (size <= 0)
             break;
 
         map_size = min(size, BUFFER_SIZE);
+        printk(KERN_INFO "Allocated size: %d", map_size);
         rc = dma_mmap_coherent(
             channel->dma_dev,
             vma,
@@ -179,8 +184,10 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma) {
             channel->buffers[i].phys_addr,
             map_size
         );
-        if (rc)
+        if (rc) {
+            printk(KERN_ERR "mmap returned error %d at buffer %d\n", rc, i);
             return rc;
+        }
         // The vm_area_struct struct has to be modified such that the bounds
         // are set correctly in the next iteration
         vma->vm_start += map_size;
@@ -403,18 +410,13 @@ static int dmadc_probe(struct platform_device *pdev) {
             dev_err(dev, "DMA allocation error\n");
             return ERROR;
         }
-        printk(
-            KERN_DEBUG
-            "Allocating memory, virtual address: %px physical address: %px\n",
-            dma->dmadc_channel->buffers[i].data,
-            (void *)dma->dmadc_channel->buffers[i].phys_addr
-        );
         sg_set_buf(
             &dma->dmadc_channel->sglist[i],
             dma->dmadc_channel->buffers[i].data,
             BUFFER_SIZE
         );
     }
+    printk(KERN_INFO "Allocated %u buffers\n", BUFFER_COUNT);
     dma->dmadc_channel->sg_len = BUFFER_COUNT;
 
     // Setup chartacter device
