@@ -32,136 +32,162 @@
 
 #include "dmadc.h"
 #include "linux/dev_printk.h"
+#include "linux/dma-direction.h"
 #include "linux/kern_levels.h"
 #include "linux/mm.h"
+#include "linux/printk.h"
 #include "linux/property.h"
 #include "linux/scatterlist.h"
 
-#define DRIVER_NAME    "dmadc"
-#define RX_CHANNEL     1
-#define ERROR          -1
-#define DMA_TIMEOUT_MS 3000
+#define DRIVER_NAME      "dmadc"
+#define ERROR            -1
+#define DMADC_TIMEOUT_MS 10000
+
+struct buffer {
+    uint32_t *data;
+    dma_addr_t phys_addr;
+};
 
 struct dmadc_channel {
-    struct channel_buffer *buffer_tables[BUFFER_COUNT];
-    dma_addr_t buffer_phys_addr;
-    /* Scatterlist for each buffer */
-    struct scatterlist sglists[BUFFER_COUNT];
+    struct buffer *buffers[BUFFER_COUNT];
+    struct scatterlist *sglist;
     /* Number of buffers used */
     u32 sg_len;
 
-    struct device *dmadc_dev; /* character device support */
+    struct device *dmadc_dev;
     struct device *dma_dev;
     dev_t dev_node;
     struct cdev cdev;
     struct class *class_p;
 
-    struct dma_chan *channel_p; /* dma support */
-    u32 direction;              /* DMA_MEM_TO_DEV or DMA_DEV_TO_MEM */
-
+    struct dma_chan *dma_channel;
     struct completion cmp;
     dma_cookie_t cookie;
 };
 
 struct dmadc {
-    struct dmadc_channel *channel;
+    struct dmadc_channel *dmadc_channel;
     struct work_struct work;
 };
 
-/* Handle a callback and indicate the DMA transfer is complete to another
- * thread of control
- */
-static void sync_callback(void *completion) {
-    /* Indicate the DMA transaction completed to allow the other
-     * thread of control to finish processing
-     */
-    complete(completion);
-}
+static void sync_callback(void *completion) { complete(completion); }
 
-/* Prepare a DMA buffer to be used in a DMA transaction, submit it to the DMA
- * engine to be queued and return a cookie that can be used to track that
- * status of the transaction
- */
-static void start_transfer(struct dmadc_channel *pchannel_p) {
+static long start_transfer(struct dmadc_channel *channel, unsigned int size) {
+    unsigned int sg_count, buffer_count;
     enum dma_ctrl_flags flags = DMA_CTRL_ACK | DMA_PREP_INTERRUPT;
     struct dma_async_tx_descriptor *chan_desc;
+    struct dma_device *dma_device = channel->dma_channel->device;
 
-    struct dma_device *dma_device = pchannel_p->channel_p->device;
-
-    chan_desc = dma_device->device_prep_dma_cyclic(
-        pchannel_p->channel_p,
-        pchannel_p->buffer_phys_addr,
-        pchannel_p->buffer_table_p->length,
-        pchannel_p->buffer_table_p->period_len,
-        pchannel_p->direction,
-        flags
+    buffer_count = DIV_ROUND_UP(size, BUFFER_SIZE);
+    if (buffer_count > BUFFER_COUNT) {
+        printk(KERN_ERR "Requested size exeeds available memory\n");
+        return -EINVAL;
+    }
+    sg_count = dma_map_sg(
+        channel->dma_dev, channel->sglist, buffer_count, DMA_FROM_DEVICE
     );
+    if (sg_count == 0) {
+        printk(KERN_ERR "dma_map_sg() error\n");
+        return -EFAULT;
+    }
 
+    chan_desc = dma_device->device_prep_slave_sg(
+        channel->dma_channel,
+        channel->sglist,
+        sg_count,
+        DMA_DEV_TO_MEM,
+        flags,
+        NULL
+    );
     if (!chan_desc) {
-        printk(KERN_ERR "dmaengine_prep*() error\n");
-        return;
+        printk(KERN_ERR "dmaengine_prep_slave_sg() error\n");
+        dma_unmap_sg(
+            channel->dma_dev, channel->sglist, buffer_count, DMA_FROM_DEVICE
+        );
+        return -EFAULT;
     }
 
     chan_desc->callback = sync_callback;
-    chan_desc->callback_param = &pchannel_p->cmp;
+    chan_desc->callback_param = &channel->cmp;
 
-    init_completion(&pchannel_p->cmp);
+    init_completion(&channel->cmp);
 
-    pchannel_p->cookie = dmaengine_submit(chan_desc);
-    if (dma_submit_error(pchannel_p->cookie)) {
+    channel->cookie = dmaengine_submit(chan_desc);
+    if (dma_submit_error(channel->cookie)) {
         printk("Submit error\n");
-        return;
+        dma_unmap_sg(
+            channel->dma_dev, channel->sglist, buffer_count, DMA_FROM_DEVICE
+        );
+        return -EFAULT;
     }
 
-    /* Start the DMA transaction which was previously queued up in the DMA
-     * engine
-     */
-    dma_async_issue_pending(pchannel_p->channel_p);
+    dma_async_issue_pending(channel->dma_channel);
+    return 0;
+}
+
+static enum dmadc_status get_status(struct dmadc_channel *channel) {
+    enum dma_status status = dma_async_is_tx_complete(
+        channel->dma_channel, channel->cookie, NULL, NULL
+    );
+    switch (status) {
+        case DMA_COMPLETE:
+            return DMADC_COMPLETE;
+        case DMA_IN_PROGRESS:
+            return DMADC_IN_PROGRESS;
+        case DMA_PAUSED:
+            return DMADC_PAUSED;
+        default:
+            return DMADC_ERROR;
+    }
 }
 
 /* Wait for a DMA transfer that was previously submitted to the DMA engine
  */
-static void wait_for_transfer(struct dmadc_channel *pchannel_p) {
-    unsigned long timeout = msecs_to_jiffies(DMA_TIMEOUT_MS);
-    enum dma_status status;
-
-    pchannel_p->buffer_table_p->status = PROXY_BUSY;
-
-    /* Wait for the transaction to complete, or timeout, or get an error */
-    timeout = wait_for_completion_timeout(&pchannel_p->cmp, timeout);
-    status = dma_async_is_tx_complete(
-        pchannel_p->channel_p, pchannel_p->cookie, NULL, NULL
+static enum dmadc_status wait_for_transfer(struct dmadc_channel *channel) {
+    unsigned long timeout = wait_for_completion_timeout(
+        &channel->cmp, msecs_to_jiffies(DMADC_TIMEOUT_MS)
     );
-
     if (timeout == 0) {
-        pchannel_p->buffer_table_p->status = PROXY_TIMEOUT;
         printk(KERN_ERR "DMA timed out\n");
-    } else if (status != DMA_COMPLETE) {
-        pchannel_p->buffer_table_p->status = PROXY_ERROR;
-        printk(
-            KERN_ERR "DMA returned completion callback status of: %s\n",
-            status == DMA_ERROR ? "error" : "in progress"
-        );
-    } else
-        pchannel_p->buffer_table_p->status = PROXY_NO_ERROR;
+        return DMADC_TIMEOUT;
+    }
+    return get_status(channel);
 }
 
-/* Map the memory for the channel interface into user space such that user space
- * can access it using coherent memory which will be non-cached for s/w coherent
- * systems such as Zynq 7K or the current default for Zynq MPSOC. MPSOC can be
- * h/w coherent when set up and then the memory will be cached.
- */
 static int mmap(struct file *file_p, struct vm_area_struct *vma) {
-    struct dmadc_channel *pchannel_p =
+    int i, rc;
+    size_t size, map_size;
+    struct dmadc_channel *channel =
         (struct dmadc_channel *)file_p->private_data;
+    // Size of the memroy allocation. May be larger than the size of a single
+    // buffer, so we iterate over all buffers and allocate as much memory as
+    // needed.
+    size = vma->vm_end - vma->vm_start;
 
-    return dma_mmap_coherent(
-        pchannel_p->dma_dev,
-        vma,
-        pchannel_p->buffer_table_p,
-        pchannel_p->buffer_phys_addr,
-        vma->vm_end - vma->vm_start
-    );
+    if (size > BUFFER_COUNT * BUFFER_SIZE)
+        // Requested memory range is too large
+        return -EINVAL;
+
+    for (i = 0; i < BUFFER_COUNT; i++) {
+        if (size <= 0)
+            break;
+
+        map_size = min(size, BUFFER_SIZE);
+        rc = dma_mmap_coherent(
+            channel->dma_dev,
+            vma,
+            channel->buffers[i]->data,
+            channel->buffers[i]->phys_addr,
+            map_size
+        );
+        if (rc)
+            return rc;
+        // The vm_area_struct struct has to be modified such that the bounds
+        // are set correctly in the next iteration
+        vma->vm_start += map_size;
+        size -= map_size;
+    }
+    return 0;
 }
 
 /* Open the device file and set up the data pointer to the proxy channel data
@@ -179,31 +205,44 @@ static int local_open(struct inode *ino, struct file *file) {
 static int release(struct inode *ino, struct file *file) {
     struct dmadc_channel *pchannel_p =
         (struct dmadc_channel *)file->private_data;
-    struct dma_device *dma_device = pchannel_p->channel_p->device;
+    struct dma_device *dma_device = pchannel_p->dma_channel->device;
 
-    dma_device->device_terminate_all(pchannel_p->channel_p);
+    dma_device->device_terminate_all(pchannel_p->dma_channel);
     return 0;
 }
 
-/* Perform I/O control to perform a DMA transfer using the input as an index
- * into the buffer descriptor table such that the application is in control of
- * which buffer to use for the transfer.The BD in this case is only a s/w
- * structure for the proxy driver, not related to the hw BD of the DMA.
- */
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
-    struct dmadc_channel *pchannel_p =
-        (struct dmadc_channel *)file->private_data;
+    struct dmadc_channel *channel = (struct dmadc_channel *)file->private_data;
+    unsigned int size;
+    enum dmadc_status status;
+    int rc;
+
     switch (cmd) {
-        case START_XFER:
-            start_transfer(pchannel_p);
+        case START_TRANSFER:
+            rc =
+                copy_from_user(&size, (unsigned int __user *)arg, sizeof(size));
+            if (rc)
+                return -EINVAL;
+            start_transfer(channel, size);
             break;
-        case FINISH_XFER:
-            wait_for_transfer(pchannel_p);
+        case WAIT_FOR_TRANSFER:
+            status = wait_for_transfer(channel);
+            rc = copy_to_user(
+                (enum dmadc_status __user *)arg, &status, sizeof(status)
+            );
+            if (rc)
+                return -EINVAL;
             break;
-        case XFER:
-            start_transfer(pchannel_p);
-            wait_for_transfer(pchannel_p);
+        case STATUS:
+            status = get_status(channel);
+            rc = copy_to_user(
+                (enum dmadc_status __user *)arg, &status, sizeof(status)
+            );
+            if (rc)
+                return -EINVAL;
             break;
+        default:
+            return -EINVAL;
     }
     return 0;
 }
@@ -283,18 +322,18 @@ init_error1:
 /* Exit the character device by freeing up the resources that it created and
  * disconnecting itself from the kernel.
  */
-static void cdevice_exit(struct dmadc_channel *pchannel_p) {
+static void cdevice_exit(struct dmadc_channel *channel) {
     /* Take everything down in the reverse order
      * from how it was created for the char device
      */
-    if (pchannel_p->dmadc_dev) {
-        device_destroy(pchannel_p->class_p, pchannel_p->dev_node);
+    if (channel->dmadc_dev) {
+        device_destroy(channel->class_p, channel->dev_node);
     }
-    if (pchannel_p->class_p) {
-        class_destroy(pchannel_p->class_p);
+    if (channel->class_p) {
+        class_destroy(channel->class_p);
     }
-    cdev_del(&pchannel_p->cdev);
-    unregister_chrdev_region(pchannel_p->dev_node, 1);
+    cdev_del(&channel->cdev);
+    unregister_chrdev_region(channel->dev_node, 1);
 }
 
 /* Initialize the DMA ADC device driver module.
@@ -339,50 +378,49 @@ static int dmadc_probe(struct platform_device *pdev) {
         return -ENOMEM;
     }
 
-    dma->channel = devm_kmalloc(dev, sizeof(struct dmadc_channel), GFP_KERNEL);
-    if (!dma->channel) {
+    dma->dmadc_channel =
+        devm_kmalloc(dev, sizeof(struct dmadc_channel), GFP_KERNEL);
+    if (!dma->dmadc_channel) {
         dev_err(dev, "Cound not allocate DMA channel\n");
         return -ENOMEM;
     }
-    dma->channel->channel_p = dma_request_chan(dev, name);
-    if (IS_ERR(dma->channel->channel_p)) {
+    dma->dmadc_channel->dma_channel = dma_request_chan(dev, name);
+    if (IS_ERR(dma->dmadc_channel->dma_channel)) {
         dev_err(dev, "Unable to request DMA channel '%s'\n", name);
-        return PTR_ERR(dma->channel->channel_p);
+        return PTR_ERR(dma->dmadc_channel->dma_channel);
     }
 
-    dma->channel->dma_dev = dev;
-    dma->channel->direction = DMA_DEV_TO_MEM;
+    dma->dmadc_channel->dma_dev = dev;
 
+    sg_init_table(dma->dmadc_channel->sglist, BUFFER_COUNT);
     for (i = 0; i < BUFFER_COUNT; i++) {
         // Allocate DMA memory that will be shared/mapped by user space
-        dma->channel->buffer_tables[i] =
-            (struct channel_buffer *)dmam_alloc_coherent(
-                dev,
-                sizeof(struct channel_buffer),
-                &dma->channel->buffer_phys_addr,
-                GFP_KERNEL
-            );
-        if (!dma->channel->buffer_tables[i]) {
+        dma->dmadc_channel->buffers[i]->data = (uint32_t *)dmam_alloc_coherent(
+            dev,
+            BUFFER_SIZE,
+            &dma->dmadc_channel->buffers[i]->phys_addr,
+            GFP_KERNEL
+        );
+        if (!dma->dmadc_channel->buffers[i]) {
             dev_err(dev, "DMA allocation error\n");
             return ERROR;
         }
         printk(
-            KERN_INFO
+            KERN_DEBUG
             "Allocating memory, virtual address: %px physical address: %px\n",
-            dma->channel->buffer_tables[i],
-            (void *)dma->channel->buffer_phys_addr
+            dma->dmadc_channel->buffers[i]->data,
+            (void *)dma->dmadc_channel->buffers[i]->phys_addr
         );
-        sg_set_page(
-            &dma->channel->sglists[i],
-            virt_to_page(dma->channel->buffer_tables[i]->buffer),
-            BUFFER_SIZE,
-            offset_in_page(dma->channel->buffer_tables[i]->buffer)
+        sg_set_buf(
+            &dma->dmadc_channel->sglist[i],
+            dma->dmadc_channel->buffers[i]->data,
+            BUFFER_SIZE
         );
     }
-    dma->channel->sg_len = BUFFER_COUNT;
+    dma->dmadc_channel->sg_len = BUFFER_COUNT;
 
     // Setup chartacter device
-    rc = cdevice_init(dma->channel);
+    rc = cdevice_init(dma->dmadc_channel);
     if (rc)
         return rc;
 
@@ -397,9 +435,9 @@ static void dmadc_remove(struct platform_device *pdev) {
     struct dmadc *dma = dev_get_drvdata(dev);
 
     // Exit char device
-    cdevice_exit(dma->channel);
+    cdevice_exit(dma->dmadc_channel);
     // Release DMA channel
-    dma_release_channel(dma->channel->channel_p);
+    dma_release_channel(dma->dmadc_channel->dma_channel);
     printk(KERN_INFO "dmadc module exited\n");
 }
 

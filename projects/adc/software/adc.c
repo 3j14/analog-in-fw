@@ -50,15 +50,15 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
 static struct argp argp = {options, parse_args, 0, adc_docs};
 
 int main(int argc, char *argv[]) {
+    struct adc adc;
+    int rc;
+    enum dmadc_status status;
     struct adc_arguments args;
     args.info = false;
     args.is_output_num_set = false;
     args.output = DEFAULT_OUTPUT_FILE;
     args.num = DEFAULT_NUM_SAMPLES;
     argp_parse(&argp, argc, argv, 0, 0, &args);
-
-    struct adc adc;
-    int rc;
 
     rc = open_adc(&adc);
     if (rc < 0) {
@@ -95,13 +95,11 @@ int main(int argc, char *argv[]) {
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
     } else {
-        struct dma_channel channel;
+        struct dmadc_channel channel;
         rc = open_dma_channel(&channel);
         if (rc < 0) {
             exit(-rc);
         }
-        channel.buffer->length = BUFFER_SIZE;
-        channel.buffer->period_len = args.num * sizeof(uint32_t);
 
         // Enable power
         *adc.config.config = ADC_PWR_EN | ADC_IO_EN;
@@ -122,15 +120,14 @@ int main(int argc, char *argv[]) {
         printf("Transfer size: %u\n", args.num);
         printf("Start transfer\n");
 
-        ioctl(channel.fd, START_XFER);
-
+        start_transfer(&channel, args.num * sizeof(uint32_t));
         // Configure packetizer
         set_packatizer_save(&adc.pack, args.num);
 
-        ioctl(channel.fd, FINISH_XFER);
+        status = wait_for_transfer(&channel);
         // TODO: Write to file instead of print
         for (int i = 0; i < args.num; i++) {
-            printf("0x%X\n", channel.buffer->buffer[0]);
+            printf("0x%X\n", channel.buffer[0]);
         }
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;

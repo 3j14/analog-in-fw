@@ -22,22 +22,21 @@
 #else
 #include <stdint.h>
 #endif
+
 #define BUFFER_COUNT 1024
-#define BUFFER_SIZE  (128 * 1024)
+// Size of each buffer in bytes. A transfer is 32 bit so 4 bytes.
+// 2048 bytes (~2KB) correspond to 512 transfers, half of the fifo size.
+// Transfers can only be multiples of the buffer size.
+#define BUFFER_SIZE 2048
 
-#define FINISH_XFER _IOW('a', 'a', int32_t *)
-#define START_XFER  _IOW('a', 'b', int32_t *)
-#define XFER        _IOR('a', 'c', int32_t *)
+enum dmadc_status {
+    DMADC_COMPLETE,
+    DMADC_IN_PROGRESS,
+    DMADC_PAUSED,
+    DMADC_ERROR,
+    DMADC_TIMEOUT,
+};
 
-struct channel_buffer {
-    uint32_t buffer[BUFFER_SIZE / sizeof(uint32_t)];
-    enum proxy_status {
-        PROXY_NO_ERROR = 0,
-        PROXY_BUSY = 1,
-        PROXY_TIMEOUT = 2,
-        PROXY_ERROR = 3
-    } status;
-    unsigned int length;
-    unsigned int period_len;
-} __attribute__((aligned(1024))); /* 64 byte alignment required for DMA, but
-                                     1024 handy for viewing memory */
+#define START_TRANSFER    _IOW('a', 'a', unsigned int *)
+#define WAIT_FOR_TRANSFER _IOR('a', 'b', enum dmadc_status *)
+#define STATUS            _IOR('a', 'c', enum dmadc_status *)
