@@ -25,7 +25,6 @@
 #include <linux/module.h>
 #include <linux/of_dma.h>
 #include <linux/platform_device.h>
-#include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
 #include <linux/workqueue.h>
@@ -33,8 +32,8 @@
 #include "dmadc.h"
 #include "linux/dev_printk.h"
 #include "linux/dma-direction.h"
+#include "linux/gfp_types.h"
 #include "linux/kern_levels.h"
-#include "linux/mm.h"
 #include "linux/printk.h"
 #include "linux/property.h"
 #include "linux/scatterlist.h"
@@ -49,8 +48,8 @@ struct buffer {
 };
 
 struct dmadc_channel {
-    struct buffer *buffers[BUFFER_COUNT];
-    struct scatterlist *sglist;
+    struct buffer buffers[BUFFER_COUNT];
+    struct scatterlist sglist[BUFFER_COUNT];
     /* Number of buffers used */
     u32 sg_len;
 
@@ -176,8 +175,8 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma) {
         rc = dma_mmap_coherent(
             channel->dma_dev,
             vma,
-            channel->buffers[i]->data,
-            channel->buffers[i]->phys_addr,
+            channel->buffers[i].data,
+            channel->buffers[i].phys_addr,
             map_size
         );
         if (rc)
@@ -203,11 +202,10 @@ static int local_open(struct inode *ino, struct file *file) {
 /* Close the file and there's nothing to do for it
  */
 static int release(struct inode *ino, struct file *file) {
-    struct dmadc_channel *pchannel_p =
-        (struct dmadc_channel *)file->private_data;
-    struct dma_device *dma_device = pchannel_p->dma_channel->device;
+    struct dmadc_channel *channel = (struct dmadc_channel *)file->private_data;
+    struct dma_device *dma_device = channel->dma_channel->device;
 
-    dma_device->device_terminate_all(pchannel_p->dma_channel);
+    dma_device->device_terminate_all(channel->dma_channel);
     return 0;
 }
 
@@ -258,28 +256,28 @@ static struct file_operations dm_fops = {
 /* Initialize the driver to be a character device such that is responds to
  * file operations.
  */
-static int cdevice_init(struct dmadc_channel *pchannel_p) {
+static int cdevice_init(struct dmadc_channel *channel) {
     int rc;
     static struct class *local_class_p = NULL;
 
     /* Allocate a character device from the kernel for this driver.
      */
-    rc = alloc_chrdev_region(&pchannel_p->dev_node, 0, 1, DRIVER_NAME);
+    rc = alloc_chrdev_region(&channel->dev_node, 0, 1, DRIVER_NAME);
 
     if (rc) {
-        dev_err(pchannel_p->dma_dev, "unable to get a char device number\n");
+        dev_err(channel->dma_dev, "unable to get a char device number\n");
         return rc;
     }
 
     /* Initialize the device data structure before registering the character
      * device with the kernel.
      */
-    cdev_init(&pchannel_p->cdev, &dm_fops);
-    pchannel_p->cdev.owner = THIS_MODULE;
-    rc = cdev_add(&pchannel_p->cdev, pchannel_p->dev_node, 1);
+    cdev_init(&channel->cdev, &dm_fops);
+    channel->cdev.owner = THIS_MODULE;
+    rc = cdev_add(&channel->cdev, channel->dev_node, 1);
 
     if (rc) {
-        dev_err(pchannel_p->dma_dev, "unable to add char device\n");
+        dev_err(channel->dma_dev, "unable to add char device\n");
         goto init_error1;
     }
 
@@ -287,35 +285,35 @@ static int cdevice_init(struct dmadc_channel *pchannel_p) {
         local_class_p = class_create(DRIVER_NAME);
 
         if (IS_ERR(local_class_p)) {
-            dev_err(pchannel_p->dma_dev, "unable to create class\n");
+            dev_err(channel->dma_dev, "unable to create class\n");
             rc = ERROR;
             goto init_error2;
         }
     }
-    pchannel_p->class_p = local_class_p;
+    channel->class_p = local_class_p;
 
     /* Create the device node in /dev so the device is accessible
      * as a character device
      */
-    pchannel_p->dmadc_dev = device_create(
-        pchannel_p->class_p, NULL, pchannel_p->dev_node, NULL, DRIVER_NAME
+    channel->dmadc_dev = device_create(
+        channel->class_p, NULL, channel->dev_node, NULL, DRIVER_NAME
     );
 
-    if (IS_ERR(pchannel_p->dmadc_dev)) {
-        dev_err(pchannel_p->dma_dev, "unable to create the device\n");
+    if (IS_ERR(channel->dmadc_dev)) {
+        dev_err(channel->dma_dev, "unable to create the device\n");
         goto init_error3;
     }
 
     return 0;
 
 init_error3:
-    class_destroy(pchannel_p->class_p);
+    class_destroy(channel->class_p);
 
 init_error2:
-    cdev_del(&pchannel_p->cdev);
+    cdev_del(&channel->cdev);
 
 init_error1:
-    unregister_chrdev_region(pchannel_p->dev_node, 1);
+    unregister_chrdev_region(channel->dev_node, 1);
     return rc;
 }
 
@@ -395,25 +393,25 @@ static int dmadc_probe(struct platform_device *pdev) {
     sg_init_table(dma->dmadc_channel->sglist, BUFFER_COUNT);
     for (i = 0; i < BUFFER_COUNT; i++) {
         // Allocate DMA memory that will be shared/mapped by user space
-        dma->dmadc_channel->buffers[i]->data = (uint32_t *)dmam_alloc_coherent(
+        dma->dmadc_channel->buffers[i].data = (uint32_t *)dmam_alloc_coherent(
             dev,
             BUFFER_SIZE,
-            &dma->dmadc_channel->buffers[i]->phys_addr,
+            &dma->dmadc_channel->buffers[i].phys_addr,
             GFP_KERNEL
         );
-        if (!dma->dmadc_channel->buffers[i]) {
+        if (!dma->dmadc_channel->buffers[i].data) {
             dev_err(dev, "DMA allocation error\n");
             return ERROR;
         }
         printk(
             KERN_DEBUG
             "Allocating memory, virtual address: %px physical address: %px\n",
-            dma->dmadc_channel->buffers[i]->data,
-            (void *)dma->dmadc_channel->buffers[i]->phys_addr
+            dma->dmadc_channel->buffers[i].data,
+            (void *)dma->dmadc_channel->buffers[i].phys_addr
         );
         sg_set_buf(
             &dma->dmadc_channel->sglist[i],
-            dma->dmadc_channel->buffers[i]->data,
+            dma->dmadc_channel->buffers[i].data,
             BUFFER_SIZE
         );
     }
@@ -474,3 +472,4 @@ MODULE_AUTHOR("Xilinx, Inc.");
 MODULE_AUTHOR("Jonas Drotleff");
 MODULE_DESCRIPTION("DMA ADC");
 MODULE_LICENSE("GPL v2");
+MODULE_VERSION("0.2");
