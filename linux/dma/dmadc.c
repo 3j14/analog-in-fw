@@ -29,6 +29,7 @@
 #include <linux/version.h>
 #include <linux/workqueue.h>
 
+#include "asm/page.h"
 #include "dmadc.h"
 #include "linux/dev_printk.h"
 #include "linux/dma-direction.h"
@@ -154,46 +155,33 @@ static enum dmadc_status wait_for_transfer(struct dmadc_channel *channel) {
 }
 
 static int mmap(struct file *file_p, struct vm_area_struct *vma) {
-    int i, rc;
-    size_t size, map_size;
-    struct dmadc_channel *channel =
-        (struct dmadc_channel *)file_p->private_data;
-    // Size of the memroy allocation. May be larger than the size of a single
-    // buffer, so we iterate over all buffers and allocate as much memory as
-    // needed.
-    // FIXME: Somehow this is equal to the pagesize when requesting a size
-    // smaller than the pagesize. Maybe find a better way?
-    size = vma->vm_end - vma->vm_start;
+    unsigned long size = vma->vm_end - vma->vm_start;
+    unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+    unsigned long buffer_index;
+    struct dmadc_channel *channel;
 
-    if (size > BUFFER_COUNT * BUFFER_SIZE) {
+    if (size > BUFFER_SIZE) {
         printk(KERN_ERR "Requested memory range is too large\n");
         return -EINVAL;
     }
-
-    for (i = 0; i < BUFFER_COUNT; i++) {
-        printk(KERN_INFO "size left: %d", size);
-        if (size <= 0)
-            break;
-
-        map_size = min(size, BUFFER_SIZE);
-        printk(KERN_INFO "Allocated size: %d", map_size);
-        rc = dma_mmap_coherent(
-            channel->dma_dev,
-            vma,
-            channel->buffers[i].data,
-            channel->buffers[i].phys_addr,
-            map_size
-        );
-        if (rc) {
-            printk(KERN_ERR "mmap returned error %d at buffer %d\n", rc, i);
-            return rc;
-        }
-        // The vm_area_struct struct has to be modified such that the bounds
-        // are set correctly in the next iteration
-        vma->vm_start += map_size;
-        size -= map_size;
+    if (offset % BUFFER_SIZE != 0) {
+        printk(KERN_ERR "Offset must be a multiple of the buffer size\n");
+        return -EINVAL;
     }
-    return 0;
+    buffer_index = offset / BUFFER_SIZE;
+    if (buffer_index >= BUFFER_COUNT) {
+        printk(KERN_ERR "Offset exceeds buffer memory range\n");
+        return -EINVAL;
+    }
+
+    channel = (struct dmadc_channel *)file_p->private_data;
+    return dma_mmap_coherent(
+        channel->dma_dev,
+        vma,
+        channel->buffers[buffer_index].data,
+        channel->buffers[buffer_index].phys_addr,
+        size
+    );
 }
 
 /* Open the device file and set up the data pointer to the proxy channel data

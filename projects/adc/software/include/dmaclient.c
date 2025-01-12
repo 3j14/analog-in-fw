@@ -15,10 +15,7 @@ int open_dma_channel(struct dmadc_channel *channel) {
         fprintf(stderr, "Unable to open '/dev/dmadc'. Is the driver loaded?\n");
         return -errno;
     }
-    // Map the buffer from kernel to user space
-    channel->buffer = (uint32_t *)mmap(
-        NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, channel->fd, 0
-    );
+
     if (channel->buffer == MAP_FAILED) {
         fprintf(stderr, "Unable to map memory from kernel\n");
         return -errno;
@@ -26,8 +23,19 @@ int open_dma_channel(struct dmadc_channel *channel) {
     return 0;
 }
 
+uint32_t *dmadc_mmap(struct dmadc_channel *channel, unsigned int buffer_index) {
+    unsigned long offset = buffer_index * BUFFER_SIZE / getpagesize();
+    return (uint32_t *)mmap(
+        NULL,
+        BUFFER_SIZE,
+        PROT_READ | PROT_WRITE,
+        MAP_SHARED,
+        channel->fd,
+        offset
+    );
+}
+
 int close_dma_channel(struct dmadc_channel *channel) {
-    munmap(channel->buffer, BUFFER_SIZE);
     // Close file descriptor for "/dev/dmadc". Any error returned from this
     // is ignored for now. If the file is no longer open, we don't care.
     close(channel->fd);

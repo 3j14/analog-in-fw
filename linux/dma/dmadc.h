@@ -25,9 +25,9 @@
 
 #define BUFFER_COUNT 1024
 // Size of each buffer in bytes. A transfer is 32 bit so 4 bytes.
-// 2048 bytes (~2KB) correspond to 512 transfers, half of the fifo size.
-// Transfers can only be multiples of the buffer size.
-#define BUFFER_SIZE 2048
+// 4096 bytes (~2KB) correspond to 1024 transfers, equal to the fifo size.
+// Buffer size should be a multiple of the page size.
+#define BUFFER_SIZE 4096
 
 enum dmadc_status {
     DMADC_COMPLETE,

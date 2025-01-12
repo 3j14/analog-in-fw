@@ -125,10 +125,7 @@ int main(int argc, char *argv[]) {
         set_packatizer_save(&adc.pack, args.num);
 
         status = wait_for_transfer(&channel);
-        // TODO: Write to file instead of print
-        for (int i = 0; i < args.num; i++) {
-            printf("0x%X\n", channel.buffer[0]);
-        }
+        // TODO: Write to file
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;
         set_packatizer_save(&adc.pack, args.num);
