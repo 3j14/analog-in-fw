@@ -97,9 +97,12 @@ set_property CONFIG.FIFO_DEPTH {1024} [get_bd_cells axis_fifo]
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma
 set_property -dict [list \
   CONFIG.c_include_mm2s {0} \
-  CONFIG.c_include_s2mm_dre {0} \
+  CONFIG.c_include_s2mm_dre {1} \
+  CONFIG.c_micro_dma {0} \
   CONFIG.c_include_sg {1} \
+  CONFIG.c_sg_include_stscntrl_strm {0} \
   CONFIG.c_s2mm_burst_size {128} \
+  CONFIG.c_sg_length_width {26} \
 ] [get_bd_cells axi_dma]
 
 # LED driver
