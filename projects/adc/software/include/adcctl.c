@@ -94,21 +94,19 @@ int close_adc(struct adc *adc) {
 }
 
 int close_adc_config(struct adc_config *config) {
-    munmap(config->config, sizeof(*config->config));
-    munmap(config->status, sizeof(*config->status));
-    munmap(config->adc_reg, sizeof(*config->adc_reg));
+    munmap(config->_mmap, ADC_CONFIG_ADDR_RANGE);
     return 0;
 }
 
 int close_packetizer(struct packetizer *pack) {
-    munmap(pack->config, sizeof(*pack->config));
-    munmap(pack->status, sizeof(*pack->status));
+    unsigned int offset = PACKETIZER_ADDR - ADC_CONFIG_ADDR;
+    munmap(pack->_mmap, offset + PACKETIZER_ADDR_RANGE);
     return 0;
 }
 
 int close_adc_trigger(struct adc_trigger *trigger) {
-    munmap(trigger->config, sizeof(*trigger->config));
-    munmap(trigger->divider, sizeof(*trigger->divider));
+    unsigned int offset = ADC_TRIGGER_ADDR - ADC_CONFIG_ADDR;
+    munmap(trigger->_mmap, offset + ADC_TRIGGER_ADDR_RANGE);
     return 0;
 }
 

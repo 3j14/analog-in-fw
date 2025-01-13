@@ -168,8 +168,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/axi_dma/S_AXI_LITE} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins axi_dma/S_AXI_LITE]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/packetizer/s_axi_lite} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins packetizer/s_axi_lite]
 # TODO: Check if using 'AXI SmartConnect' for S_AXI_HP0_ACLK can work
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_S2MM} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins ps/S_AXI_HP0]
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_SG} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins axi_dma/M_AXI_SG]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_S2MM} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI Interconnect} master_apm {0}}  [get_bd_intf_pins ps/S_AXI_HP0]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_SG} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI Interconnect} master_apm {0}}  [get_bd_intf_pins axi_dma/M_AXI_SG]
 # IO
 connect_bd_net [get_bd_ports exp_adc_pwr_en] [get_bd_pins adc_config/pwr_en]
 connect_bd_net [get_bd_ports exp_adc_ref_en] [get_bd_pins adc_config/ref_en]

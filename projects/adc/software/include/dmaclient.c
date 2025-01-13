@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -16,16 +17,17 @@ int open_dma_channel(struct dmadc_channel *channel) {
         return -errno;
     }
 
-    if (channel->buffer == MAP_FAILED) {
-        fprintf(stderr, "Unable to map memory from kernel\n");
-        return -errno;
+    // Make sure all pointers to buffers are initiallized with null pointers
+    for (unsigned int i = 0; i < BUFFER_COUNT; i++) {
+        channel->buffers[i] = NULL;
     }
+
     return 0;
 }
 
-uint32_t *dmadc_mmap(struct dmadc_channel *channel, unsigned int buffer_index) {
-    unsigned long offset = buffer_index * BUFFER_SIZE / getpagesize();
-    return (uint32_t *)mmap(
+int dmadc_mmap(struct dmadc_channel *channel, size_t buffer_index) {
+    off_t offset = (buffer_index * BUFFER_SIZE) / getpagesize();
+    void *buffer = mmap(
         NULL,
         BUFFER_SIZE,
         PROT_READ | PROT_WRITE,
@@ -33,9 +35,33 @@ uint32_t *dmadc_mmap(struct dmadc_channel *channel, unsigned int buffer_index) {
         channel->fd,
         offset
     );
+    if (buffer == MAP_FAILED) {
+        return -errno;
+    }
+    channel->buffers[buffer_index] = (uint32_t *)buffer;
+    return 0;
+}
+
+int dmadc_mmap_buffers(struct dmadc_channel *channel, size_t size) {
+    int rc;
+    size_t i, buffers = (size / BUFFER_SIZE);
+    if (size % BUFFER_SIZE != 0)
+        buffers += 1;
+    for (i = 0; i < buffers; i++) {
+        rc = dmadc_mmap(channel, i);
+        if (rc < 0) {
+            return rc;
+        }
+    }
+    return 0;
 }
 
 int close_dma_channel(struct dmadc_channel *channel) {
+    for (unsigned int i = 0; i < BUFFER_COUNT; i++) {
+        if (channel->buffers[i] == NULL)
+            continue;
+        munmap(channel->buffers[i], BUFFER_SIZE);
+    }
     // Close file descriptor for "/dev/dmadc". Any error returned from this
     // is ignored for now. If the file is no longer open, we don't care.
     close(channel->fd);
