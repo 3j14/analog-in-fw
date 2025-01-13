@@ -91,6 +91,7 @@ static long start_transfer(struct dmadc_channel *channel, unsigned int size) {
         return -EFAULT;
     }
 
+    printk(KERN_INFO "buffer_count: %u, sg_count: %u", buffer_count, sg_count);
     chan_desc = dma_device->device_prep_slave_sg(
         channel->dma_channel,
         channel->sglist,

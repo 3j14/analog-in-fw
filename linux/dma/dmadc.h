@@ -30,11 +30,14 @@
 #define BUFFER_SIZE 4096
 
 enum dmadc_status {
-    DMADC_COMPLETE,
-    DMADC_IN_PROGRESS,
-    DMADC_PAUSED,
-    DMADC_ERROR,
-    DMADC_TIMEOUT,
+    DMADC_COMPLETE = 0,
+    DMADC_IN_PROGRESS = 1,
+    DMADC_PAUSED = 2,
+    DMADC_ERROR = 3,
+    DMADC_TIMEOUT = 4,
+};
+static const char *dmadc_status_strings[] = {
+    "complete", "in progresss", "paused", "error", "timeout"
 };
 
 #define START_TRANSFER    _IOW('a', 'a', unsigned int *)

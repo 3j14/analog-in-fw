@@ -48,7 +48,8 @@ struct adc_config {
 struct packetizer {
     uint32_t *_mmap;
     uint32_t *config;
-    uint32_t *status;
+    uint32_t *packet_counter;
+    uint16_t *iter_counter;
 };
 
 #define ADC_TRIGGER_ONCE       (uint32_t)0

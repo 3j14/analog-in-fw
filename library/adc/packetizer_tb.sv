@@ -58,6 +58,7 @@ module packetizer_tb #(
 
     reg  [31:0] config_reg = 32'b0;
     wire [31:0] counter;
+    wire [15:0] iter_counter;
 
     axis_loopback_checker loopback (
         .aclk(clk),
@@ -83,7 +84,8 @@ module packetizer_tb #(
         .m_axis_s2mm_tlast (last),
 
         .config_reg(config_reg),
-        .counter(counter)
+        .packet_counter(counter),
+        .iter_counter(iter_counter)
     );
 
     always #(Period) clk <= ~clk;
@@ -94,10 +96,12 @@ module packetizer_tb #(
         resetn_s2mm = 1;
         #(5 * Period);
         @(posedge clk) config_reg = 10;
-        #(Period);
+        #(3 * Period);
         @(posedge clk) if (counter != 1) $error("Counter not incremented");
-        #(18 * Period);
+        #(16 * Period);
         @(posedge clk) if (~last) $error("'last' not asserted");
+        #(Period);
+        @(posedge clk) if (iter_counter != 1) $error("Iteration counter not incremented");
         #(40 * Period);
         @(posedge clk) resetn_loopback = 0;
         #(Period);
@@ -107,6 +111,8 @@ module packetizer_tb #(
         @(posedge clk) resetn_s2mm = 1;
         #(Period);
         @(posedge clk) config_reg = 10;
+        #(20 * Period);
+        @(posedge clk) resetn_loopback = 1;
         #(40 * Period);
         $finish();
     end

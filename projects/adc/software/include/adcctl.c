@@ -40,7 +40,9 @@ int open_packetizer(int fd, struct packetizer *pack) {
         return -errno;
     }
     pack->config = &pack->_mmap[(offset / sizeof(uint32_t)) + 0];
-    pack->status = &pack->_mmap[(offset / sizeof(uint32_t)) + 1];
+    pack->packet_counter = &pack->_mmap[(offset / sizeof(uint32_t)) + 1];
+    pack->iter_counter =
+        (uint16_t *)(&pack->_mmap[(offset / sizeof(uint32_t)) + 2]);
     return 0;
 }
 
@@ -144,7 +146,7 @@ int set_packatizer_save(struct packetizer *pack, uint32_t value) {
         // No need to update, already set to desired value
         return 0;
     }
-    if (*pack->status != 0) {
+    if (*pack->packet_counter != 0) {
         // Unable to update, packetizer does not allow writes to the config
         // register when the counter is not 0.
         return -1;
