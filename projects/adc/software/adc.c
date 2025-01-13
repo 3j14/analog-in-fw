@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
         printf(
             "packetizer packet counter:      %u\n", *adc.pack.packet_counter
         );
-        printf("packetizer iter  counter:       %u\n", *adc.pack.iter_counter);
+        printf("packetizer iter counter:       %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
     } else {
@@ -132,35 +132,12 @@ int main(int argc, char *argv[]) {
 
         start_transfer(&channel, args.num * sizeof(uint32_t));
         // Configure packetizer
-        set_packatizer_save(&adc.pack, 4 * args.num);
+        set_packatizer_save(&adc.pack, args.num);
 
         status = wait_for_transfer(&channel);
         switch (status) {
             case DMADC_COMPLETE:
                 puts("Completed DMA transfer");
-                rc = dmadc_mmap_buffers(&channel, args.num * sizeof(uint32_t));
-                size_t total_buffers =
-                    args.num * sizeof(uint32_t) / BUFFER_SIZE;
-                size_t buffers_mod =
-                    (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
-                for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE;
-                     i++) {
-                    if (channel.buffers[i] == NULL)
-                        continue;
-                    fwrite(
-                        channel.buffers[i],
-                        sizeof(uint32_t),
-                        BUFFER_SIZE / sizeof(uint32_t),
-                        outfile
-                    );
-                }
-                if (buffers_mod > 0)
-                    fwrite(
-                        channel.buffers[total_buffers + 1],
-                        sizeof(uint32_t),
-                        buffers_mod / sizeof(uint32_t),
-                        outfile
-                    );
                 break;
             case DMADC_TIMEOUT:
                 fprintf(stderr, "Error: DMA timed out\n");
@@ -173,6 +150,31 @@ int main(int argc, char *argv[]) {
                 );
                 break;
         }
+        puts("Mapping buffers...");
+        rc = dmadc_mmap_buffers(&channel, args.num * sizeof(uint32_t));
+        printf("Done, result: %d\n", rc);
+        size_t total_buffers = args.num * sizeof(uint32_t) / BUFFER_SIZE;
+        size_t buffers_mod = (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
+        for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE; i++) {
+            if (channel.buffers[i] == NULL)
+                continue;
+            fwrite(
+                channel.buffers[i],
+                sizeof(uint32_t),
+                BUFFER_SIZE / sizeof(uint32_t),
+                outfile
+            );
+        }
+        if (buffers_mod > 0)
+            if (channel.buffers[total_buffers + 1] != NULL) {
+                fwrite(
+                    channel.buffers[total_buffers + 1],
+                    sizeof(uint32_t),
+                    buffers_mod / sizeof(uint32_t),
+                    outfile
+                );
+            }
+        puts("Closing DMA channel...");
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;
         set_packatizer_save(&adc.pack, 0);
