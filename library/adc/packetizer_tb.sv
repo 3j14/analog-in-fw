@@ -96,7 +96,7 @@ module packetizer_tb #(
         resetn_s2mm = 1;
         #(5 * Period);
         @(posedge clk) config_reg = 10;
-        #(3 * Period);
+        #(2 * Period);
         @(posedge clk) if (counter != 1) $error("Counter not incremented");
         #(16 * Period);
         @(posedge clk) if (~last) $error("'last' not asserted");
