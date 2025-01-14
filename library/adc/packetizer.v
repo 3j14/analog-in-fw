@@ -178,7 +178,8 @@ module packetizer (
 
     assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
                               (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? packet_counter :
-                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? {16'b0, iter_counter} : 0;
+                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2])
+                              ? {16'b0, iter_counter} : 0;
     assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
                               (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? 2'b00 :
                               (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? 2'b00 : 2'b10;
