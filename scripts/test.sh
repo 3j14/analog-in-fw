@@ -40,6 +40,7 @@ for test_bench in $TESTBENCHES; do
     echo "Compile '$test_bench'..."
     # Compile the SystemVerilog testbench
     verilator --binary \
+        --trace --trace-depth 1 \
         config.vlt \
         -Mdir "$local_build_dir" \
         -o "$module" \
