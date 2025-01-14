@@ -88,6 +88,11 @@ create_bd_cell -type module -reference adc_manager adc_manager
 create_bd_cell -type module -reference adc_config adc_config
 create_bd_cell -type module -reference adc_trigger adc_trigger
 create_bd_cell -type module -reference packetizer packetizer
+create_bd_cell -type module -reference delay trigger_delay
+set_property CONFIG.DELAY_CYCLES {2} [get_bd_cells trigger_delay]
+
+# Inline logical and for ready signal
+create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilvector_logic:1.0 ready_and
 
 # Fifo
 create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_fifo
@@ -154,10 +159,16 @@ connect_bd_intf_net [get_bd_intf_pins axis_fifo/m_axis] [get_bd_intf_pins packet
 connect_bd_net $adc_clk [get_bd_pins adc_trigger/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins adc_trigger/aresetn]
 connect_bd_net [get_bd_pins packetizer/last] [get_bd_pins adc_trigger/last]
-connect_bd_net [get_bd_pins packetizer/ready] [get_bd_pins adc_trigger/ready]
-connect_bd_net [get_bd_pins adc_trigger/trigger] [get_bd_pins adc_manager/trigger]
+connect_bd_net [get_bd_pins packetizer/ready] [get_bd_pins ready_and/Op1]
+connect_bd_net [get_bd_pins adc_manager/ready] [get_bd_pins ready_and/Op2]
+connect_bd_net [get_bd_pins ready_and/Res] [get_bd_pins adc_trigger/ready]
+connect_bd_net [get_bd_pins adc_trigger/trigger] [get_bd_pins trigger_delay/signal_in]
+connect_bd_net [get_bd_pins trigger_delay/signal_out] [get_bd_pins adc_manager/trigger]
 connect_bd_net [get_bd_ports exp_adc_cnv] [get_bd_pins adc_trigger/cnv]
 connect_bd_net [get_bd_ports exp_adc_busy] [get_bd_pins adc_trigger/busy]
+# Delay
+connect_bd_net $adc_clk [get_bd_pins trigger_delay/clk]
+connect_bd_net $aresetn_adc [get_bd_pins trigger_delay/resetn]
 # DMA
 connect_bd_intf_net [get_bd_intf_pins packetizer/m_axis_s2mm] [get_bd_intf_pins axi_dma/S_AXIS_S2MM]
 connect_bd_net $aresetn_adc [get_bd_pins axi_dma/axi_resetn]
