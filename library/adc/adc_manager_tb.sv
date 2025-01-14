@@ -163,7 +163,7 @@ module adc_manager_tb #(
         .spi_sdi(miso),
         .spi_sdo(mosi),
         .spi_csn(csn),
-        .spi_sck(sck),
+        .spi_clk(sck),
         .spi_resetn(resetn),
         .trigger(trigger),
         .s_axis_tdata(m_axis_tdata),

@@ -11,7 +11,7 @@ module adc_manager #(
     input  wire [NUM_SDI-1:0] spi_sdi,
     output reg                spi_sdo = 0,
     output wire               spi_csn,
-    output wire               spi_sck,
+    output wire               spi_clk,
     output wire               spi_resetn,
     // AXI Stream input (register access mode)
     input  wire [     32-1:0] s_axis_tdata,
@@ -56,7 +56,7 @@ module adc_manager #(
     //                write mode ----^^^^  ^^^^^^^^---- address
 
     // Used to gate the SPI clock
-    reg spi_sck_enable = 0;
+    reg spi_clk_enable = 0;
 
     // Output clock buffer with gated with clock-enable.
     // Either BUFHCE or BUFMRCE is needed for their synchronous
@@ -65,8 +65,8 @@ module adc_manager #(
         .CE_TYPE ("SYNC"),
         .INIT_OUT(0)
     ) output_clk (
-        .O (spi_sck),
-        .CE(spi_sck_enable),
+        .O (spi_clk),
+        .CE(spi_clk_enable),
         .I (aclk)
     );
 
@@ -81,13 +81,13 @@ module adc_manager #(
     assign status[7:5] = 0;
     assign status[31:8] = reg_data;
 
-    always @(posedge spi_sck or negedge aresetn or negedge spi_csn) begin
+    always @(posedge spi_clk or negedge aresetn or negedge spi_csn) begin
         if (!aresetn) begin
             cnv_data <= 0;
             spi_sdo  <= 0;
             data_idx <= 0;
         end else begin
-            if (~spi_sck && ~spi_csn) begin
+            if (~spi_csn && !transaction_active) begin
                 // CSn was just asserted, setup counter
                 if (device_mode == Conversion) begin
                     data_idx <= MaxIdxCnv[IdxDataSize-1:0];
@@ -134,7 +134,7 @@ module adc_manager #(
         if (!aresetn) begin
             reg_data <= 0;
             transaction_active <= 0;
-            spi_sck_enable <= 0;
+            spi_clk_enable <= 0;
             m_axis_tvalid <= 0;
             device_mode <= Conversion;
             reg_available <= 0;
@@ -153,7 +153,7 @@ module adc_manager #(
             if (~transaction_active) begin
                 if (cs) begin
                     transaction_active <= 1;
-                    spi_sck_enable <= 1;
+                    spi_clk_enable <= 1;
                 end else if (device_mode == Conversion && trigger) begin
                     cs <= 1;
                     m_axis_tvalid <= 0;
@@ -164,7 +164,7 @@ module adc_manager #(
             end else begin
                 if (data_idx == 0) begin
                     transaction_active <= 0;
-                    spi_sck_enable <= 0;
+                    spi_clk_enable <= 0;
                     cs <= 0;
                     if (device_mode == Conversion) begin
                         m_axis_tvalid <= 1;
@@ -179,7 +179,7 @@ module adc_manager #(
                     if (data_idx - 1 == 0) begin
                         // Clock has to be disabled one cycle in advance as it
                         // is synchronous with aclk.
-                        spi_sck_enable <= 0;
+                        spi_clk_enable <= 0;
                     end
                 end
             end

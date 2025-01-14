@@ -144,7 +144,7 @@ connect_bd_intf_net [get_bd_intf_pins adc_config/m_axis] [get_bd_intf_pins adc_m
 connect_bd_net [get_bd_ports exp_adc_sdi] [get_bd_pins adc_manager/spi_sdi]
 connect_bd_net [get_bd_ports exp_adc_sdo] [get_bd_pins adc_manager/spi_sdo]
 connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc_manager/spi_csn]
-connect_bd_net [get_bd_ports exp_adc_sck] [get_bd_pins adc_manager/spi_sck]
+connect_bd_net [get_bd_ports exp_adc_sck] [get_bd_pins adc_manager/spi_clk]
 connect_bd_net [get_bd_ports exp_adc_resetn] [get_bd_pins adc_manager/spi_resetn]
 connect_bd_net [get_bd_pins adc_manager/status] [get_bd_pins adc_config/status]
 # Fifo
