@@ -3,26 +3,27 @@
 module adc_manager #(
     parameter integer NUM_SDI = 4
 ) (
-    input wire aclk,
-    input wire aresetn,
+    input  wire               aclk,
+    input  wire               aresetn,
     // Acquisition trigger
-    input wire trigger,
+    input  wire               trigger,
     // SPI interface
-    input wire [NUM_SDI-1:0] spi_sdi,
-    output reg spi_sdo = 0,
-    output wire spi_csn,
-    output wire spi_sck,
-    output wire spi_resetn,
+    input  wire [NUM_SDI-1:0] spi_sdi,
+    output reg                spi_sdo = 0,
+    output wire               spi_csn,
+    output wire               spi_sck,
+    output wire               spi_resetn,
     // AXI Stream input (register access mode)
-    input wire [32-1:0] s_axis_tdata,
-    input wire s_axis_tvalid,
-    output wire s_axis_tready,
+    input  wire [     32-1:0] s_axis_tdata,
+    input  wire               s_axis_tvalid,
+    output wire               s_axis_tready,
     // AXI Stream output (conversion data)
-    output wire [32-1:0] m_axis_tdata,
-    output reg m_axis_tvalid = 0,
-    input wire m_axis_tready,
+    output wire [     32-1:0] m_axis_tdata,
+    output reg                m_axis_tvalid = 0,
+    input  wire               m_axis_tready,
     // Status
-    output wire [32-1:0] status
+    output wire [     32-1:0] status,
+    output wire               ready
 );
     localparam integer DataWidth = 32;
     assign spi_resetn = aresetn;
@@ -49,6 +50,7 @@ module adc_manager #(
     reg [1:0] device_mode = Conversion;
     reg transaction_active = 0;
     reg reg_available = 0;
+    reg cs = 0;
 
     localparam reg [23:0] ExitReg = {1'b0, 15'h0014, 8'd1};
     //                write mode ----^^^^  ^^^^^^^^---- address
@@ -68,8 +70,9 @@ module adc_manager #(
         .I (aclk)
     );
 
-    assign s_axis_tready = ~transaction_active & ~reg_available;
-    assign spi_csn = ~transaction_active;
+    assign s_axis_tready = ~cs & ~transaction_active & ~reg_available;
+    assign spi_csn = ~cs;
+    assign ready = ~cs & ~transaction_active & ~reg_available;
 
     assign status[0] = transaction_active;
     assign status[1] = reg_available;
@@ -78,17 +81,64 @@ module adc_manager #(
     assign status[7:5] = 0;
     assign status[31:8] = reg_data;
 
-    always @(posedge aclk or negedge aresetn) begin
+    always @(posedge spi_sck or negedge aresetn or negedge spi_csn) begin
         if (!aresetn) begin
             cnv_data <= 0;
-            reg_data <= 0;
+            spi_sdo  <= 0;
             data_idx <= 0;
+        end else begin
+            if (~spi_sck && ~spi_csn) begin
+                // CSn was just asserted, setup counter
+                if (device_mode == Conversion) begin
+                    data_idx <= MaxIdxCnv[IdxDataSize-1:0];
+                    spi_sdo  <= 0;
+                end else begin
+                    data_idx <= MaxIdxReg[IdxDataSize-1:0];
+                    spi_sdo  <= reg_data[MaxIdxReg-1];
+                end
+            end else if (~spi_csn && data_idx > 0) begin
+                if (device_mode == Conversion) begin
+                    // Get data from SPI data in.
+                    // Consider the following initial state:
+                    //
+                    // spi_data_in: 8'b01101010
+                    // spi_sdo: 4'b1011
+                    // DataWidth = 8, NUM_SDI = 4.
+                    //
+                    // Then, the concatenation looks as follows:
+                    // {4'b1010, 4'b1011} == 8'b10101011
+                    //
+                    // The 'NUM_SDI' least significant bits of 'spi_data_in'
+                    // are dropped and 'spi_sdo' is added to the most
+                    // significant bits on the right.
+                    cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
+                end else begin
+                    // NOTE: Because the first bit is already shifted out
+                    // at the falling edge of CSn, we have to shift out the
+                    // bits offset by 1 with respect to the index.
+                    // The last cycle can be skipped and the output set to 0.
+                    if (data_idx - 1 == 0) begin
+                        spi_sdo <= 0;
+                    end else begin
+                        spi_sdo <= reg_data[data_idx-2];
+                    end
+                    // TODO: There is currently no way of reading the
+                    // returned registers.
+                end
+                data_idx <= data_idx - 1;
+            end
+        end
+    end
+
+    always @(posedge aclk or negedge aresetn) begin
+        if (!aresetn) begin
+            reg_data <= 0;
             transaction_active <= 0;
             spi_sck_enable <= 0;
-            spi_sdo <= 0;
             m_axis_tvalid <= 0;
             device_mode <= Conversion;
             reg_available <= 0;
+            cs <= 0;
         end else begin
             if (m_axis_tvalid && m_axis_tready) begin
                 m_axis_tvalid <= 0;
@@ -101,26 +151,21 @@ module adc_manager #(
                 end
             end
             if (~transaction_active) begin
-                if (device_mode == Conversion && trigger) begin
+                if (cs) begin
                     transaction_active <= 1;
                     spi_sck_enable <= 1;
-                    spi_sdo <= 0;
+                end else if (device_mode == Conversion && trigger) begin
+                    cs <= 1;
                     m_axis_tvalid <= 0;
-                    data_idx <= MaxIdxCnv[IdxDataSize-1:0];
-                    cnv_data <= 0;
                 end else if (reg_available) begin
-                    transaction_active <= 1;
-                    spi_sck_enable <= 1;
-                    spi_sdo <= 0;
-                    data_idx <= MaxIdxReg[IdxDataSize-1:0];
-                    spi_sdo <= reg_data[MaxIdxReg-1];
+                    cs <= 1;
                     reg_available <= 0;
                 end
             end else begin
                 if (data_idx == 0) begin
                     transaction_active <= 0;
                     spi_sck_enable <= 0;
-                    data_idx <= 0;
+                    cs <= 0;
                     if (device_mode == Conversion) begin
                         m_axis_tvalid <= 1;
                     end else begin
@@ -136,35 +181,6 @@ module adc_manager #(
                         // is synchronous with aclk.
                         spi_sck_enable <= 0;
                     end
-                    if (device_mode == Conversion) begin
-                        // Get data from SPI data in.
-                        // Consider the following initial state:
-                        //
-                        // spi_data_in: 8'b01101010
-                        // spi_sdo: 4'b1011
-                        // DataWidth = 8, NUM_SDI = 4.
-                        //
-                        // Then, the concatenation looks as follows:
-                        // {4'b1010, 4'b1011} == 8'b10101011
-                        //
-                        // The 'NUM_SDI' least significant bits of 'spi_data_in'
-                        // are dropped and 'spi_sdo' is added to the most
-                        // significant bits on the right.
-                        cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
-                    end else begin
-                        // NOTE: Because the first bit is already shifted out
-                        // at the falling edge of CSn, we have to shift out the
-                        // bits offset by 1 with respect to the index.
-                        // The last cycle can be skipped and the output set to 0.
-                        if (data_idx - 1 == 0) begin
-                            spi_sdo <= 0;
-                        end else begin
-                            spi_sdo <= reg_data[data_idx-2];
-                        end
-                        // TODO: There is currently no way of reading the
-                        // returned registers.
-                    end
-                    data_idx <= data_idx - 1;
                 end
             end
         end

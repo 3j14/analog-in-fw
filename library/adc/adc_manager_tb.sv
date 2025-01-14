@@ -80,15 +80,15 @@ module adc_impl #(
             end else begin
                 case (lane_md)
                     LaneModeFour: begin
-                        sdo[3:0] <= test_pattern[data_idx-4+:4];
+                        sdo[3:0] <= #(8.1) test_pattern[data_idx-4+:4];
                         data_idx <= data_idx - 4;
                     end
                     LaneModeTwo: begin
-                        sdo[1:0] <= test_pattern[data_idx-2+:2];
+                        sdo[1:0] <= #(8.1) test_pattern[data_idx-2+:2];
                         data_idx <= data_idx - 2;
                     end
                     default: begin
-                        sdo[0]   <= test_pattern[data_idx-1];
+                        sdo[0]   <= #(8.1) test_pattern[data_idx-1];
                         data_idx <= data_idx - 1;
                     end
                 endcase
@@ -124,6 +124,7 @@ module adc_manager_tb #(
     wire [3:0] miso;
     wire resetn;
     wire csn;
+    wire ready;
 
     // AXI Stream sender
     reg [DATA_WIDTH-1:0] m_axis_tdata = 0;
@@ -171,7 +172,8 @@ module adc_manager_tb #(
         .m_axis_tdata(s_axis_tdata),
         .m_axis_tvalid(s_axis_tvalid),
         .m_axis_tready(s_axis_tready),
-        .status(status)
+        .status(status),
+        .ready(ready)
     );
 
     always #(Period) clk <= ~clk;
@@ -191,6 +193,8 @@ module adc_manager_tb #(
     end
 
     initial begin
+        $dumpfile("build/verilator/adc_manager_tb/trace.vcd");
+        $dumpvars();
         m_axis_tdata = {8'b0, 3'b101, 21'b0};
 
         #(10 * Period);
@@ -215,7 +219,8 @@ module adc_manager_tb #(
         @(posedge clk) cnv_clk_en = 1;
         @(posedge clk) s_axis_tready = 1;
 
-        @(negedge s_axis_tvalid)
+        @(negedge s_axis_tvalid) $display("%x", axis_data_received);
+        $display("%x", test_pattern);
         if (axis_data_received == test_pattern) begin
             $display("Test pattern received from ADC");
         end else $error("Received invalid data");
