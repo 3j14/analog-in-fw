@@ -84,8 +84,10 @@ module packetizer (
 
     // Only accept writes if the counter is zero or equal to
     // config_reg
-    assign s_axi_lite_awready = axi_lite_awready & ((packet_counter == 32'b0) | (packet_counter == config_reg));
-    assign s_axi_lite_wready  = axi_lite_wready & ((packet_counter == 32'b0) | (packet_counter == config_reg));
+    assign s_axi_lite_awready = axi_lite_awready &
+        ((packet_counter == 32'b0) | (packet_counter == config_reg));
+    assign s_axi_lite_wready  = axi_lite_wready &
+        ((packet_counter == 32'b0) | (packet_counter == config_reg));
     assign s_axi_lite_bresp = axi_lite_bresp;
     assign s_axi_lite_bvalid = axi_lite_bvalid;
     assign s_axi_lite_arready = axi_lite_arready;
@@ -176,7 +178,7 @@ module packetizer (
 
     assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
                               (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? packet_counter :
-                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? iter_counter : 0;
+                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? {16'b0, iter_counter} : 0;
     assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
                               (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? 2'b00 :
                               (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? 2'b00 : 2'b10;
