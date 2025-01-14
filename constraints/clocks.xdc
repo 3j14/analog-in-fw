@@ -1,7 +1,7 @@
 # This is taken care of by the
 # create_clock -period 8.000 -name adc_clk [get_ports adc_clk_p_i]
 
-create_clock -period 20.000 -name adc_clk -waveform {0.000 5.000} [get_nets -hierarchical adc_clk]
+create_clock -period 30.000 -name adc_clk -waveform {0.000 15.000} [get_nets -hierarchical adc_clk]
 # create_generated_clock -source [get_pins bd_adc_i/clk_wiz_0/clk_in1_p] -edges {1 2 3} -edge_shift {0.000 1.000 12.000} [get_pins bd_adc_i/clk_wiz_0/clk_out2]
 
 # Proapagation delay derived from

@@ -2,7 +2,7 @@ create_bd_design bd_${name}
 
 set adc_clk_in_freq 125.0
 set ref_clk_freq 125.0
-set adc_clk_freq 50.0
+set adc_clk_freq 33.33333
 set sampling_rate 1.0
 set num_sdi 4
 
@@ -57,7 +57,7 @@ set_property -dict [list \
     CONFIG.CLKOUT1_DRIVES {BUFGCE} \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $adc_clk_freq \
-    CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {25} \
+    CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {50} \
     CONFIG.CLKOUT2_SEQUENCE_NUMBER {1} \
     CONFIG.CLKOUT2_DRIVES {BUFGCE} \
     CONFIG.USE_RESET {false} \
