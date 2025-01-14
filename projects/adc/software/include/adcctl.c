@@ -40,7 +40,9 @@ int open_packetizer(int fd, struct packetizer *pack) {
         return -errno;
     }
     pack->config = &pack->_mmap[(offset / sizeof(uint32_t)) + 0];
-    pack->status = &pack->_mmap[(offset / sizeof(uint32_t)) + 1];
+    pack->packet_counter = &pack->_mmap[(offset / sizeof(uint32_t)) + 1];
+    pack->iter_counter =
+        (uint16_t *)(&pack->_mmap[(offset / sizeof(uint32_t)) + 2]);
     return 0;
 }
 
@@ -92,21 +94,19 @@ int close_adc(struct adc *adc) {
 }
 
 int close_adc_config(struct adc_config *config) {
-    munmap(config->config, sizeof(*config->config));
-    munmap(config->status, sizeof(*config->status));
-    munmap(config->adc_reg, sizeof(*config->adc_reg));
+    munmap(config->_mmap, ADC_CONFIG_ADDR_RANGE);
     return 0;
 }
 
 int close_packetizer(struct packetizer *pack) {
-    munmap(pack->config, sizeof(*pack->config));
-    munmap(pack->status, sizeof(*pack->status));
+    unsigned int offset = PACKETIZER_ADDR - ADC_CONFIG_ADDR;
+    munmap(pack->_mmap, offset + PACKETIZER_ADDR_RANGE);
     return 0;
 }
 
 int close_adc_trigger(struct adc_trigger *trigger) {
-    munmap(trigger->config, sizeof(*trigger->config));
-    munmap(trigger->divider, sizeof(*trigger->divider));
+    unsigned int offset = ADC_TRIGGER_ADDR - ADC_CONFIG_ADDR;
+    munmap(trigger->_mmap, offset + ADC_TRIGGER_ADDR_RANGE);
     return 0;
 }
 
@@ -144,7 +144,7 @@ int set_packatizer_save(struct packetizer *pack, uint32_t value) {
         // No need to update, already set to desired value
         return 0;
     }
-    if (*pack->status != 0) {
+    if (*pack->packet_counter != 0) {
         // Unable to update, packetizer does not allow writes to the config
         // register when the counter is not 0.
         return -1;

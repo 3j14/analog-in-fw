@@ -9,6 +9,7 @@
 
 #include "adcctl.h"
 #include "dmaclient.h"
+#include "dmadc.h"
 
 #define yesno(b) (b) ? "yes" : "no"
 
@@ -31,13 +32,11 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->is_output_num_set = true;
             args->num = (size_t)atoi(arg);
-            if (args->num < MIN_NUM_SAMPLES || args->num > MAX_NUM_SAMPLES)
+            if (args->num > MAX_NUM_SAMPLES)
                 argp_error(
                     state,
-                    "Invalid number of samples '%s'. "
-                    "Min number of samples: %u, max: %u",
+                    "Invalid number of samples '%s'. Max: %u",
                     arg,
-                    MIN_NUM_SAMPLES,
                     MAX_NUM_SAMPLES
                 );
             break;
@@ -50,15 +49,17 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
 static struct argp argp = {options, parse_args, 0, adc_docs};
 
 int main(int argc, char *argv[]) {
+    struct adc adc;
+    int rc;
+    size_t i;
+    enum dmadc_status status;
     struct adc_arguments args;
+    FILE *outfile;
     args.info = false;
     args.is_output_num_set = false;
     args.output = DEFAULT_OUTPUT_FILE;
     args.num = DEFAULT_NUM_SAMPLES;
     argp_parse(&argp, argc, argv, 0, 0, &args);
-
-    struct adc adc;
-    int rc;
 
     rc = open_adc(&adc);
     if (rc < 0) {
@@ -91,17 +92,24 @@ int main(int argc, char *argv[]) {
         printf("adc_config config:              0x%X\n", *adc.config.config);
         printf("adc_config axis_reg:            0x%X\n", *adc.config.adc_reg);
         printf("packetizer config:              %u\n", *adc.pack.config);
-        printf("packetizer status (counter):    %u\n", *adc.pack.status);
+        printf(
+            "packetizer packet counter:      %u\n", *adc.pack.packet_counter
+        );
+        printf("packetizer iter counter:       %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
     } else {
-        struct dma_channel channel;
+        outfile = fopen(args.output, "w");
+        if (outfile == NULL) {
+            fprintf(stderr, "Unable to open file %s\n", args.output);
+            close_adc(&adc);
+            exit(-errno);
+        }
+        struct dmadc_channel channel;
         rc = open_dma_channel(&channel);
         if (rc < 0) {
             exit(-rc);
         }
-        channel.buffer->length = BUFFER_SIZE;
-        channel.buffer->period_len = args.num * sizeof(uint32_t);
 
         // Enable power
         *adc.config.config = ADC_PWR_EN | ADC_IO_EN;
@@ -119,22 +127,58 @@ int main(int argc, char *argv[]) {
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
         *adc.trigger.divider = 50;
-        printf("Transfer size: %u\n", args.num);
-        printf("Start transfer\n");
+        printf("Transfer size: %u\n", args.num * sizeof(uint32_t));
+        puts("Start transfer\n");
 
-        ioctl(channel.fd, START_XFER);
-
+        start_transfer(&channel, args.num * sizeof(uint32_t));
         // Configure packetizer
         set_packatizer_save(&adc.pack, args.num);
 
-        ioctl(channel.fd, FINISH_XFER);
-        // TODO: Write to file instead of print
-        for (int i = 0; i < args.num; i++) {
-            printf("0x%X\n", channel.buffer->buffer[0]);
+        status = wait_for_transfer(&channel);
+        switch (status) {
+            case DMADC_COMPLETE:
+                puts("Completed DMA transfer");
+                break;
+            case DMADC_TIMEOUT:
+                fprintf(stderr, "Error: DMA timed out\n");
+            default:
+                status = get_status(&channel);
+                fprintf(
+                    stderr,
+                    "Error: DMA transfer exited with status %s\n",
+                    dmadc_status_strings[status]
+                );
+                break;
         }
+        puts("Mapping buffers...");
+        rc = dmadc_mmap_buffers(&channel, args.num * sizeof(uint32_t));
+        printf("Done, result: %d\n", rc);
+        size_t total_buffers = args.num * sizeof(uint32_t) / BUFFER_SIZE;
+        size_t buffers_mod = (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
+        for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE; i++) {
+            if (channel.buffers[i] == NULL)
+                continue;
+            fwrite(
+                channel.buffers[i],
+                sizeof(uint32_t),
+                BUFFER_SIZE / sizeof(uint32_t),
+                outfile
+            );
+        }
+        if (buffers_mod > 0)
+            if (channel.buffers[total_buffers + 1] != NULL) {
+                fwrite(
+                    channel.buffers[total_buffers + 1],
+                    sizeof(uint32_t),
+                    buffers_mod / sizeof(uint32_t),
+                    outfile
+                );
+            }
+        puts("Closing DMA channel...");
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;
-        set_packatizer_save(&adc.pack, args.num);
+        set_packatizer_save(&adc.pack, 0);
+        fclose(outfile);
     }
     close_adc(&adc);
 }

@@ -22,21 +22,24 @@
 #else
 #include <stdint.h>
 #endif
-#define BUFFER_SIZE (128 * 1024)
 
-#define FINISH_XFER _IOW('a', 'a', int32_t *)
-#define START_XFER  _IOW('a', 'b', int32_t *)
-#define XFER        _IOR('a', 'c', int32_t *)
+#define BUFFER_COUNT 1024
+// Size of each buffer in bytes. A transfer is 32 bit so 4 bytes.
+// 4096 bytes (~2KB) correspond to 1024 transfers, equal to the fifo size.
+// Buffer size should be a multiple of the page size.
+#define BUFFER_SIZE 4096
 
-struct channel_buffer {
-    uint32_t buffer[BUFFER_SIZE / sizeof(uint32_t)];
-    enum proxy_status {
-        PROXY_NO_ERROR = 0,
-        PROXY_BUSY = 1,
-        PROXY_TIMEOUT = 2,
-        PROXY_ERROR = 3
-    } status;
-    unsigned int length;
-    unsigned int period_len;
-} __attribute__((aligned(1024))); /* 64 byte alignment required for DMA, but
-                                     1024 handy for viewing memory */
+enum dmadc_status {
+    DMADC_COMPLETE = 0,
+    DMADC_IN_PROGRESS = 1,
+    DMADC_PAUSED = 2,
+    DMADC_ERROR = 3,
+    DMADC_TIMEOUT = 4,
+};
+static const char *dmadc_status_strings[] = {
+    "complete", "in progresss", "paused", "error", "timeout"
+};
+
+#define START_TRANSFER    _IOW('a', 'a', unsigned int *)
+#define WAIT_FOR_TRANSFER _IOR('a', 'b', enum dmadc_status *)
+#define STATUS            _IOR('a', 'c', enum dmadc_status *)

@@ -53,12 +53,14 @@ module packetizer (
     // to the register disables the packetizer completly, not forwarding
     // any packages.
     localparam reg [29:0] AddrConfig = 30'h0000_0200;
-    localparam reg [29:0] AddrStatus = 30'h0000_0204;
+    localparam reg [29:0] AddrPacketCounter = 30'h0000_0204;
+    localparam reg [29:0] AddrIterCounter = 30'h0000_0208;
 
     // Internal register for storing data recieved on the AXI
     // subordinates.
     reg  [31:0] config_reg;
-    wire [31:0] counter;
+    wire [31:0] packet_counter;
+    wire [15:0] iter_counter;
 
     // AXI4-Lite state machine and registers
     localparam reg [1:0] StateIdle = 2'b00;
@@ -82,12 +84,14 @@ module packetizer (
 
     // Only accept writes if the counter is zero or equal to
     // config_reg
-    assign s_axi_lite_awready = axi_lite_awready & ((counter == 32'b0) | (counter == config_reg));
-    assign s_axi_lite_wready  = axi_lite_wready & ((counter == 32'b0) | (counter == config_reg));
-    assign s_axi_lite_bresp   = axi_lite_bresp;
-    assign s_axi_lite_bvalid  = axi_lite_bvalid;
+    assign s_axi_lite_awready = axi_lite_awready &
+        ((packet_counter == 32'b0) | (packet_counter == config_reg));
+    assign s_axi_lite_wready  = axi_lite_wready &
+        ((packet_counter == 32'b0) | (packet_counter == config_reg));
+    assign s_axi_lite_bresp = axi_lite_bresp;
+    assign s_axi_lite_bvalid = axi_lite_bvalid;
     assign s_axi_lite_arready = axi_lite_arready;
-    assign s_axi_lite_rvalid  = axi_lite_rvalid;
+    assign s_axi_lite_rvalid = axi_lite_rvalid;
 
     // AXI4-Lite state machine for write operations
     always @(posedge aclk or negedge aresetn) begin
@@ -173,9 +177,12 @@ module packetizer (
     end
 
     assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
-                              (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? counter : 0;
+                              (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? packet_counter :
+                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2])
+                              ? {16'b0, iter_counter} : 0;
     assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
-                              (axi_lite_araddr[29:2] == AddrStatus[29:2]) ? 2'b00 : 2'b10;
+                              (axi_lite_araddr[29:2] == AddrPacketCounter[29:2]) ? 2'b00 :
+                              (axi_lite_araddr[29:2] == AddrIterCounter[29:2]) ? 2'b00 : 2'b10;
 
     // AXI4-Lite write logic
     always @(posedge aclk or negedge aresetn) begin
@@ -191,8 +198,9 @@ module packetizer (
                         );
                         axi_lite_bresp <= 2'b00;
                     end
-                    // The status register is a read-only register
-                    AddrStatus[29:2]: axi_lite_bresp <= 2'b10;
+                    // The counter registers are read-only registers
+                    AddrPacketCounter[29:2]: axi_lite_bresp <= 2'b10;
+                    AddrIterCounter[29:2]: axi_lite_bresp <= 2'b10;
                     default: axi_lite_bresp <= 2'b10;
                 endcase
             end
@@ -212,7 +220,8 @@ module packetizer (
         .m_axis_s2mm_tlast(m_axis_s2mm_tlast),
         // Other
         .config_reg(config_reg),
-        .counter(counter)
+        .packet_counter(packet_counter),
+        .iter_counter(iter_counter)
     );
     assign last  = m_axis_s2mm_tlast;
     assign ready = s_axis_data_tready;
@@ -232,14 +241,16 @@ module packetizer_s2mm (
     output wire        m_axis_s2mm_tlast,
     // Other
     input  wire [31:0] config_reg,
-    output reg  [31:0] counter = 32'b0
+    output reg  [31:0] packet_counter = 32'b0,
+    output reg  [15:0] iter_counter = 16'b0
 );
+    reg last = 1'b0;
     // AXI-Stream to AXI S2MM
-    // Ready to receive data if downstream DMA is redy and config_reg is not 0
-    assign s_axis_data_tready = m_axis_s2mm_tready & (|config_reg);
+    // Ready to receive data if downstream DMA is ready and config_reg is not 0
+    assign s_axis_data_tready = |config_reg & m_axis_s2mm_tready;
     // Last if config_reg not 0, tvalid is asserted high,
     // and config_reg is equal to counter.
-    assign m_axis_s2mm_tlast  = |config_reg & m_axis_s2mm_tvalid & (config_reg == counter);
+    assign m_axis_s2mm_tlast  = |config_reg & m_axis_s2mm_tvalid & last;
     // Data is valid if config_reg not zero,
     // and upstream data input is also valid.
     assign m_axis_s2mm_tvalid = |config_reg & s_axis_data_tvalid;
@@ -257,14 +268,25 @@ module packetizer_s2mm (
 
     always @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
-            counter <= 0;
+            packet_counter <= 0;
+            iter_counter   <= 0;
+            last           <= 0;
         end else begin
+            if (config_reg == 32'b0) begin
+                packet_counter <= 0;
+                last <= 0;
+            end
             if (m_axis_s2mm_tvalid && m_axis_s2mm_tready) begin
-                // Transfer has been performed
-                if (config_reg == 32'b0 || counter == config_reg) begin
-                    counter <= 0;
+                if (last) begin
+                    last <= 0;
+                    packet_counter <= 0;
+                    iter_counter <= iter_counter + 1;
                 end else begin
-                    counter <= counter + 1;
+                    packet_counter <= packet_counter + 1;
+                    if (packet_counter + 1 == config_reg - 1) begin
+                        // Next cycle will be the last cycle
+                        last <= 1;
+                    end
                 end
             end
         end

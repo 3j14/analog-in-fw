@@ -2,7 +2,7 @@ create_bd_design bd_${name}
 
 set adc_clk_in_freq 125.0
 set ref_clk_freq 125.0
-set adc_clk_freq 50.0
+set adc_clk_freq 33.33333
 set sampling_rate 1.0
 set num_sdi 4
 
@@ -57,7 +57,7 @@ set_property -dict [list \
     CONFIG.CLKOUT1_DRIVES {BUFGCE} \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $adc_clk_freq \
-    CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {25} \
+    CONFIG.CLKOUT2_REQUESTED_DUTY_CYCLE {50} \
     CONFIG.CLKOUT2_SEQUENCE_NUMBER {1} \
     CONFIG.CLKOUT2_DRIVES {BUFGCE} \
     CONFIG.USE_RESET {false} \
@@ -89,13 +89,20 @@ create_bd_cell -type module -reference adc_config adc_config
 create_bd_cell -type module -reference adc_trigger adc_trigger
 create_bd_cell -type module -reference packetizer packetizer
 
+# Fifo
+create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_fifo
+set_property CONFIG.FIFO_DEPTH {1024} [get_bd_cells axis_fifo]
+
 # DMA
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma
 set_property -dict [list \
   CONFIG.c_include_mm2s {0} \
-  CONFIG.c_include_s2mm_dre {0} \
-  CONFIG.c_include_sg {0} \
+  CONFIG.c_include_s2mm_dre {1} \
+  CONFIG.c_micro_dma {0} \
+  CONFIG.c_include_sg {1} \
+  CONFIG.c_sg_include_stscntrl_strm {0} \
   CONFIG.c_s2mm_burst_size {128} \
+  CONFIG.c_sg_length_width {26} \
 ] [get_bd_cells axi_dma]
 
 # LED driver
@@ -135,10 +142,14 @@ connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc_manager/spi_csn]
 connect_bd_net [get_bd_ports exp_adc_sck] [get_bd_pins adc_manager/spi_sck]
 connect_bd_net [get_bd_ports exp_adc_resetn] [get_bd_pins adc_manager/spi_resetn]
 connect_bd_net [get_bd_pins adc_manager/status] [get_bd_pins adc_config/status]
+# Fifo
+connect_bd_net $adc_clk [get_bd_pins axis_fifo/s_axis_aclk]
+connect_bd_net $aresetn_adc [get_bd_pins axis_fifo/s_axis_aresetn]
+connect_bd_intf_net [get_bd_intf_pins adc_manager/m_axis] [get_bd_intf_pins axis_fifo/s_axis]
 # Packetizer
 connect_bd_net $adc_clk [get_bd_pins packetizer/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins packetizer/aresetn]
-connect_bd_intf_net [get_bd_intf_pins adc_manager/m_axis] [get_bd_intf_pins packetizer/s_axis_data]
+connect_bd_intf_net [get_bd_intf_pins axis_fifo/m_axis] [get_bd_intf_pins packetizer/s_axis_data]
 # ADC Trigger
 connect_bd_net $adc_clk [get_bd_pins adc_trigger/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins adc_trigger/aresetn]
@@ -151,6 +162,7 @@ connect_bd_net [get_bd_ports exp_adc_busy] [get_bd_pins adc_trigger/busy]
 connect_bd_intf_net [get_bd_intf_pins packetizer/m_axis_s2mm] [get_bd_intf_pins axi_dma/S_AXIS_S2MM]
 connect_bd_net $aresetn_adc [get_bd_pins axi_dma/axi_resetn]
 connect_bd_net $adc_clk [get_bd_pins axi_dma/m_axi_s2mm_aclk]
+connect_bd_net $adc_clk [get_bd_pins axi_dma/m_axi_sg_aclk]
 connect_bd_net $adc_clk [get_bd_pins axi_dma/s_axi_lite_aclk]
 connect_bd_net [get_bd_pins axi_dma/s2mm_introut] [get_bd_pins ps/IRQ_F2P]
 # Automation
@@ -158,8 +170,8 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/adc_trigger/s_axi_lite} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins adc_trigger/s_axi_lite]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/axi_dma/S_AXI_LITE} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins axi_dma/S_AXI_LITE]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$ref_clk} Clk_slave {$adc_clk} Clk_xbar {Auto} Master {/ps/M_AXI_GP0} Slave {/packetizer/s_axi_lite} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins packetizer/s_axi_lite]
-# TODO: Check if using 'AXI SmartConnect' for S_AXI_HP0_ACLK can work
-apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {Auto} Master {/axi_dma/M_AXI_S2MM} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI Interconnect} master_apm {0}}  [get_bd_intf_pins ps/S_AXI_HP0]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_S2MM} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins ps/S_AXI_HP0]
+apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {$adc_clk} Clk_slave {$ref_clk} Clk_xbar {$ref_clk} Master {/axi_dma/M_AXI_SG} Slave {/ps/S_AXI_HP0} ddr_seg {Auto} intc_ip {New AXI SmartConnect} master_apm {0}}  [get_bd_intf_pins axi_dma/M_AXI_SG]
 # IO
 connect_bd_net [get_bd_ports exp_adc_pwr_en] [get_bd_pins adc_config/pwr_en]
 connect_bd_net [get_bd_ports exp_adc_ref_en] [get_bd_pins adc_config/ref_en]

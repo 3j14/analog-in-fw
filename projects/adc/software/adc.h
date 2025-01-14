@@ -5,16 +5,11 @@
 #include <stddef.h>
 
 #define DEFAULT_OUTPUT_FILE "out.dat"
-#define DEFAULT_NUM_SAMPLES 128
-#define MIN_NUM_SAMPLES     128
-#define MAX_NUM_SAMPLES     BUFFER_SIZE
+#define DEFAULT_NUM_SAMPLES BUFFER_SIZE / sizeof(uint32_t)
+#define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
 
 #define INFO_MUTUALLY_EXCLUSIVE_ERROR \
     "--info is mutually exclusive with --output and --num"
-
-// Helpers to include convert integer definitions to strings
-#define _to_string_impl(s) #s
-#define to_string(s)       _to_string_impl(s)
 
 const char *argp_program_version = "adc 0.1.0";
 const char adc_docs[] =
@@ -31,13 +26,7 @@ const struct argp_option options[] = {
      "file",
      0,
      "Output file for the data, defaults to " DEFAULT_OUTPUT_FILE},
-    {"num",
-     'n',
-     "count",
-     0,
-     "Number of samples (min. " to_string(MIN_NUM_SAMPLES
-     ) ", max. " to_string(MAX_NUM_SAMPLES
-     ) ", defaults to " to_string(DEFAULT_NUM_SAMPLES) ")"},
+    {"num", 'n', "count", 0, "Number of samples, defaults to 1024"},
     {0}
 };
 
