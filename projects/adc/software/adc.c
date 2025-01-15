@@ -120,14 +120,15 @@ int main(int argc, char *argv[]) {
         }
 
         // Enable power
-        *adc.config.config = ADC_PWR_EN | ADC_IO_EN;
+        *adc.config.config =
+            ADC_PWR_EN | ADC_IO_EN | ADC_REF_EN | ADC_DIFFAMP_EN | ADC_OPAMP_EN;
         // Wait for power to stabilize
         usleep(1000);
 
         // Configure ADC
         write_adc_reg(&adc.config, ADC_REG_ENTER);
-        uint8_t mode = ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK |
-                       ADC_REG_MODE_SDR | ADC_REG_MODE_TEST;
+        uint8_t mode =
+            ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK | ADC_REG_MODE_SDR;
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
         write_adc_reg(&adc.config, ADC_REG_EXIT);
 
@@ -135,7 +136,7 @@ int main(int argc, char *argv[]) {
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
         *adc.trigger.divider = 50;
-        puts("Start transfer\n");
+        puts("Start transfer");
 
         start_transfer(&channel, args.num * sizeof(uint32_t));
         // Configure packetizer
