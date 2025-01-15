@@ -80,11 +80,11 @@ module adc_impl #(
             end else begin
                 case (lane_md)
                     LaneModeFour: begin
-                        sdo[3:0] <= #(8.1) test_pattern[data_idx-4+:4];
+                        sdo[3:0] <= #(8.1) {<<{test_pattern[data_idx-4+:4]}};
                         data_idx <= data_idx - 4;
                     end
                     LaneModeTwo: begin
-                        sdo[1:0] <= #(8.1) test_pattern[data_idx-2+:2];
+                        sdo[1:0] <= #(8.1) {<<{test_pattern[data_idx-2+:2]}};
                         data_idx <= data_idx - 2;
                     end
                     default: begin

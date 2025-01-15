@@ -25,6 +25,20 @@ module adc_manager #(
     output wire [     32-1:0] status,
     output wire               ready
 );
+    // Reverse registers
+    // Used to reverse the order of sdi[*]. The AD4030-24 in multi data lane
+    // mode reverses the order of the sdi ports such that sdi[0] is the most
+    // significant bit and sdi[3] is the least significant bit.
+    function automatic [NUM_SDI-1:0] reverse;
+        input reg [NUM_SDI-1:0] input_reg;
+        integer bit_index;
+        begin
+            for (bit_index = 0; bit_index < NUM_SDI; bit_index = bit_index + 1) begin
+                reverse[bit_index] = input_reg[NUM_SDI-1-bit_index];
+            end
+        end
+    endfunction
+
     localparam integer DataWidth = 32;
     assign spi_resetn = aresetn;
 
@@ -111,7 +125,7 @@ module adc_manager #(
                     // The 'NUM_SDI' least significant bits of 'spi_data_in'
                     // are dropped and 'spi_sdo' is added to the most
                     // significant bits on the right.
-                    cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], spi_sdi};
+                    cnv_data <= {cnv_data[DataWidth-1-NUM_SDI:0], reverse(spi_sdi)};
                 end else begin
                     // NOTE: Because the first bit is already shifted out
                     // at the falling edge of CSn, we have to shift out the
