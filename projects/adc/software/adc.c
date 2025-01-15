@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
         printf(
             "packetizer packet counter:      %u\n", *adc.pack.packet_counter
         );
-        printf("packetizer iter counter:       %u\n", *adc.pack.iter_counter);
+        printf("packetizer iter counter:        %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
     } else {
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         // Enable power
         *adc.config.config = ADC_PWR_EN | ADC_IO_EN;
         // Wait for power to stabilize
-        usleep(250);
+        usleep(1000);
 
         // Configure ADC
         write_adc_reg(&adc.config, ADC_REG_ENTER);
@@ -127,7 +127,6 @@ int main(int argc, char *argv[]) {
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
         *adc.trigger.divider = 50;
-        printf("Transfer size: %u\n", args.num * sizeof(uint32_t));
         puts("Start transfer\n");
 
         start_transfer(&channel, args.num * sizeof(uint32_t));
@@ -150,31 +149,33 @@ int main(int argc, char *argv[]) {
                 );
                 break;
         }
-        puts("Mapping buffers...");
         rc = dmadc_mmap_buffers(&channel, args.num * sizeof(uint32_t));
-        printf("Done, result: %d\n", rc);
-        size_t total_buffers = args.num * sizeof(uint32_t) / BUFFER_SIZE;
-        size_t buffers_mod = (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
-        for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE; i++) {
-            if (channel.buffers[i] == NULL)
-                continue;
-            fwrite(
-                channel.buffers[i],
-                sizeof(uint32_t),
-                BUFFER_SIZE / sizeof(uint32_t),
-                outfile
-            );
-        }
-        if (buffers_mod > 0)
-            if (channel.buffers[total_buffers + 1] != NULL) {
+        if (rc != 0) {
+            fprintf(stderr, "Error: Unable to map buffers: Error %d\n", rc);
+        } else {
+            size_t total_buffers = args.num * sizeof(uint32_t) / BUFFER_SIZE;
+            size_t buffers_mod = (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
+            for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE; i++) {
+                if (channel.buffers[i] == NULL)
+                    continue;
                 fwrite(
-                    channel.buffers[total_buffers + 1],
+                    channel.buffers[i],
                     sizeof(uint32_t),
-                    buffers_mod / sizeof(uint32_t),
+                    BUFFER_SIZE / sizeof(uint32_t),
                     outfile
                 );
             }
-        puts("Closing DMA channel...");
+            if (buffers_mod > 0) {
+                if (channel.buffers[total_buffers + 1] != NULL) {
+                    fwrite(
+                        channel.buffers[total_buffers + 1],
+                        sizeof(uint32_t),
+                        buffers_mod / sizeof(uint32_t),
+                        outfile
+                    );
+                }
+            }
+        }
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;
         set_packatizer_save(&adc.pack, 0);
