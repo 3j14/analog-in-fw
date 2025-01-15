@@ -33,6 +33,7 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
                     state, "--shutdown is mutually exclusive with all options"
                 );
             args->shutdown = true;
+            break;
         case 'n':
             if (args->info || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
