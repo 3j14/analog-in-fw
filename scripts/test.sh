@@ -45,6 +45,7 @@ for test_bench in $TESTBENCHES; do
         -Mdir "$local_build_dir" \
         -o "$module" \
         -I"$dir" \
+        -I"$dir/../include" \
         "${otherfiles[@]}" \
         "$test_bench" \
         --top "$module" > /dev/null

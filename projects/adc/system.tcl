@@ -1,9 +1,9 @@
-add_files -norecurse library/adc/axi4lite_helpers.vh
 add_files -norecurse library/adc/adc_manager.v
 add_files -norecurse library/adc/adc_config.v
 add_files -norecurse library/adc/adc_trigger.v
 add_files -norecurse library/adc/packetizer.v
 add_files -norecurse library/misc/delay.v
+add_files -norecurse library/include/axi4lite_helpers.vh
 add_files -fileset sim_1 -norecurse library/adc/adc_manager_tb.sv
 add_files -fileset sim_1 -norecurse library/adc/adc_trigger_tb.sv
 add_files -fileset sim_1 -norecurse library/adc/packetizer_tb.sv
