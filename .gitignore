@@ -1,4 +1,7 @@
+# Build files
+*.elf
 build
+# Vivado/Vitis
 .Xil
 _ide
 *.o
@@ -8,5 +11,7 @@ _ide
 *_journal.py
 *_journal.py~
 .rigel_looper
-*.elf
+# debootstrap
 wget-log*
+# clangd:
+compile_commands.json
