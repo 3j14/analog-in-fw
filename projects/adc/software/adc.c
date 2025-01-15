@@ -17,27 +17,18 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
     struct adc_arguments *args = state->input;
     switch (key) {
         case 'i':
-            if (args->is_acquire_mode || args->shutdown)
-                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->info = true;
             break;
         case 'o':
-            if (args->info || args->shutdown)
-                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_acquire_mode = true;
             args->output = arg;
             break;
+        case 't':
+            args->test = true;
+            break;
         case 's':
-            if (args->info || args->is_acquire_mode)
-                argp_error(
-                    state, "--shutdown is mutually exclusive with all options"
-                );
             args->shutdown = true;
             break;
         case 'n':
-            if (args->info || args->shutdown)
-                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_acquire_mode = true;
             args->num = (size_t)atoi(arg);
             if (args->num > MAX_NUM_SAMPLES)
                 argp_error(
@@ -48,15 +39,9 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
                 );
             break;
         case 'd':
-            if (args->info || args->shutdown)
-                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_acquire_mode = true;
             args->div = (size_t)atoi(arg);
             break;
         case 'a':
-            if (args->info || args->shutdown)
-                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_acquire_mode = true;
             args->avg = (size_t)atoi(arg);
             break;
         default:
@@ -75,8 +60,8 @@ int main(int argc, char *argv[]) {
     struct adc_arguments args;
     FILE *outfile;
     args.info = false;
-    args.is_acquire_mode = false;
     args.shutdown = false;
+    args.test = false;
     args.div = DEFAULT_DIVIDER;
     args.avg = 1;
     args.output = DEFAULT_OUTPUT_FILE;
@@ -88,7 +73,10 @@ int main(int argc, char *argv[]) {
         exit(-rc);
     }
 
-    if (args.info) {
+    if (args.shutdown) {
+        puts("Shutdown device, all other options are ignored.");
+        *adc.config.config = 0;
+    } else if (args.info) {
         bool trans_active = get_adc_transaction_active(&adc.config);
         bool reg_available = get_adc_reg_available(&adc.config);
         bool tvalid = get_adc_tvalid(&adc.config);
@@ -121,8 +109,6 @@ int main(int argc, char *argv[]) {
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
         printf("adc_trigger averages:           %u\n", *adc.trigger.averages);
-    } else if (args.shutdown) {
-        *adc.config.config = 0;
     } else {
         outfile = fopen(args.output, "w");
         if (outfile == NULL) {
@@ -146,6 +132,13 @@ int main(int argc, char *argv[]) {
         write_adc_reg(&adc.config, ADC_REG_ENTER);
         uint8_t mode =
             ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK | ADC_REG_MODE_SDR;
+        if (args.test) {
+            mode |= ADC_REG_MODE_TEST;
+        } else if (args.avg > 1) {
+            mode |= ADC_REG_MODE_32BIT_AVG;
+        } else {
+            mode |= ADC_REG_MODE_32BIT_COM;
+        }
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
         write_adc_reg(&adc.config, ADC_REG_EXIT);
 

@@ -13,22 +13,22 @@
 #define ADC_REG(read, addr, data) (uint32_t)((read << 23) | (addr << 8) | data)
 
 // Default ADC register commands
-#define ADC_REG_EXIT               ADC_REG(0, 0x14, 1)
-#define ADC_REG_ENTER              (uint32_t)(0b101 << 21)
-#define ADC_REG_MODE_ADDR          0x20
-#define ADC_REG_MODE_1_LANE        (uint8_t)0
-#define ADC_REG_MODE_2_LANE        (uint8_t)(1 << 6)
-#define ADC_REG_MODE_4_LANE        (uint8_t)(2 << 6)
-#define ADC_REG_MODE_SPI_CLK       (uint8_t)0
-#define ADC_REG_MODE_ECHO_CLK      (uint8_t)(1 << 4)
-#define ADC_REG_MODE_HOST_CLK      (uint8_t)(2 << 4)
-#define ADC_REG_MODE_SDR           (uint8_t)0
-#define ADC_REG_MODE_DDR           (uint8_t)(1 << 3)
-#define ADC_REG_MODE_24BIT         (uint8_t)0
-#define ADC_REG_MODE_24BIT_COM     (uint8_t)1
-#define ADC_REG_MODE_32BIT_COM     (uint8_t)2
-#define ADC_REG_MODE_32BIT_AVERAGE (uint8_t)3
-#define ADC_REG_MODE_TEST          (uint8_t)4
+#define ADC_REG_EXIT           ADC_REG(0, 0x14, 1)
+#define ADC_REG_ENTER          (uint32_t)(0b101 << 21)
+#define ADC_REG_MODE_ADDR      0x20
+#define ADC_REG_MODE_1_LANE    (uint8_t)0
+#define ADC_REG_MODE_2_LANE    (uint8_t)(1 << 6)
+#define ADC_REG_MODE_4_LANE    (uint8_t)(2 << 6)
+#define ADC_REG_MODE_SPI_CLK   (uint8_t)0
+#define ADC_REG_MODE_ECHO_CLK  (uint8_t)(1 << 4)
+#define ADC_REG_MODE_HOST_CLK  (uint8_t)(2 << 4)
+#define ADC_REG_MODE_SDR       (uint8_t)0
+#define ADC_REG_MODE_DDR       (uint8_t)(1 << 3)
+#define ADC_REG_MODE_24BIT     (uint8_t)0
+#define ADC_REG_MODE_24BIT_COM (uint8_t)1
+#define ADC_REG_MODE_32BIT_COM (uint8_t)2
+#define ADC_REG_MODE_32BIT_AVG (uint8_t)3
+#define ADC_REG_MODE_TEST      (uint8_t)4
 
 #define ADC_STATUS_MODE_CONV            (uint8_t)0
 #define ADC_STATUS_MODE_REG_ACCESS_ONCE (uint8_t)2

@@ -9,28 +9,15 @@
 #define DEFAULT_NUM_SAMPLES BUFFER_SIZE / sizeof(uint32_t)
 #define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
 
-#define INFO_MUTUALLY_EXCLUSIVE_ERROR \
-    "--info is mutually exclusive with --output, --num, -div, and --shutdown"
-
 const char *argp_program_version = "adc 0.1.0";
 const char adc_docs[] =
     "Read from the ADC using DMA or get ADC status information";
 const struct argp_option options[] = {
-    {"info",
-     'i',
-     0,
-     0,
-     "Read the current status registers. Mutually exclusive with 'output' "
-     "and "
-     "'num'"},
-    {"shutdown",
-     's',
-     0,
-     0,
-     "Shutdown ADC and disable power. Mutually exclusive with all other "
-     "options."},
+    {"info", 'i', 0, 0, "Read the current status registers"},
+    {"shutdown", 's', 0, 0, "Shutdown ADC and disable power"},
     {"div", 'd', "divider", 0, "Divider, defaults to 20"},
     {"avg", 'a', "averages", 0, "Averages, defaults to 1"},
+    {"test", 't', 0, 0, "Test pattern mode"},
     {"output",
      'o',
      "file",
@@ -43,9 +30,9 @@ const struct argp_option options[] = {
 struct adc_arguments {
     bool info;
     bool shutdown;
-    bool is_acquire_mode;
     size_t div;
     size_t avg;
+    bool test;
     char *output;
     size_t num;
 };
