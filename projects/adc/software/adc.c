@@ -17,18 +17,24 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
     struct adc_arguments *args = state->input;
     switch (key) {
         case 'i':
-            if (args->is_output_num_set)
+            if (args->is_output_num_set || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->info = true;
             break;
         case 'o':
-            if (args->info)
+            if (args->info || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->is_output_num_set = true;
             args->output = arg;
             break;
+        case 's':
+            if (args->info || args->is_output_num_set)
+                argp_error(
+                    state, "--shutdown is mutually exclusive with all options"
+                );
+            args->shutdown = true;
         case 'n':
-            if (args->info)
+            if (args->info || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->is_output_num_set = true;
             args->num = (size_t)atoi(arg);
@@ -98,6 +104,8 @@ int main(int argc, char *argv[]) {
         printf("packetizer iter counter:        %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
+    } else if (args.shutdown) {
+        *adc.config.config = 0;
     } else {
         outfile = fopen(args.output, "w");
         if (outfile == NULL) {

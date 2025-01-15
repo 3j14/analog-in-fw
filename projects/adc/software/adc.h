@@ -9,7 +9,7 @@
 #define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
 
 #define INFO_MUTUALLY_EXCLUSIVE_ERROR \
-    "--info is mutually exclusive with --output and --num"
+    "--info is mutually exclusive with --output, --num, and --shutdown"
 
 const char *argp_program_version = "adc 0.1.0";
 const char adc_docs[] =
@@ -21,6 +21,12 @@ const struct argp_option options[] = {
      0,
      "Read the current status registers. Mutually exclusive with 'output' and "
      "'num'"},
+    {"shutdown",
+     's',
+     0,
+     0,
+     "Shutdown ADC and disable power. Mutually exclusive with all other "
+     "options."},
     {"output",
      'o',
      "file",
@@ -32,6 +38,7 @@ const struct argp_option options[] = {
 
 struct adc_arguments {
     bool info;
+    bool shutdown;
     bool is_output_num_set;
     char *output;
     size_t num;
