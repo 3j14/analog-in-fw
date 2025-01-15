@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
         // Configure trigger
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
+        *adc.trigger.averages = args.avg;
         *adc.trigger.divider = args.div;
         puts("Start transfer");
 
