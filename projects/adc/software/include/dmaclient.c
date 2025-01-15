@@ -26,7 +26,7 @@ int open_dma_channel(struct dmadc_channel *channel) {
 }
 
 int dmadc_mmap(struct dmadc_channel *channel, size_t buffer_index) {
-    off_t offset = (buffer_index * BUFFER_SIZE) / getpagesize();
+    off_t offset = (buffer_index * BUFFER_SIZE);
     void *buffer = mmap(
         NULL,
         BUFFER_SIZE,
