@@ -81,7 +81,7 @@ RPN_CORES_BUILD_DIRS := $(addprefix $(RPN_DIR)/tmp/cores/,$(RPN_CORES))
 
 HDL_FILES := $(shell find library -path $(RPN_DIR) -prune -false -o -name \*.v -o -name \*.sv | sort)
 HDL_FILES += $(shell find projects -name \*.v -o -name \*.sv | sort)
-HDL_INCLUDE_DIRS := $(shell find library -path $(RPN_DIR) -prune -false -o -name \*.v -o -name \*.sv -exec dirname "{}" \; | sort -u) 
+HDL_INCLUDE_DIRS := $(shell find library -path $(RPN_DIR) -prune -false -o \( -name \*.v -o -name \*.sv -o -name \*.vh \) -exec dirname "{}" \; | sort -u) 
 HDL_INCLUDES := $(addprefix -I,$(HDL_INCLUDE_DIRS))
 
 DTS_SOURCES := $(wildcard $(RPN_DIR)/dts/*.dts)
