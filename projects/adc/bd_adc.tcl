@@ -89,7 +89,7 @@ create_bd_cell -type module -reference adc_config adc_config
 create_bd_cell -type module -reference adc_trigger adc_trigger
 create_bd_cell -type module -reference packetizer packetizer
 create_bd_cell -type module -reference delay trigger_delay
-set_property CONFIG.DELAY_CYCLES {2} [get_bd_cells trigger_delay]
+set_property CONFIG.DELAY_CYCLES {1} [get_bd_cells trigger_delay]
 
 # Inline logical and for ready signal
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilvector_logic:1.0 ready_and
