@@ -62,6 +62,7 @@ struct adc_trigger {
     uint32_t *_mmap;
     uint32_t *config;
     uint32_t *divider;
+    uint32_t *averages;
 };
 struct adc {
     struct adc_config config;

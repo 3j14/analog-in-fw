@@ -5,11 +5,12 @@
 #include <stddef.h>
 
 #define DEFAULT_OUTPUT_FILE "out.dat"
+#define DEFAULT_DIVIDER     20
 #define DEFAULT_NUM_SAMPLES BUFFER_SIZE / sizeof(uint32_t)
 #define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
 
 #define INFO_MUTUALLY_EXCLUSIVE_ERROR \
-    "--info is mutually exclusive with --output, --num, and --shutdown"
+    "--info is mutually exclusive with --output, --num, -div, and --shutdown"
 
 const char *argp_program_version = "adc 0.1.0";
 const char adc_docs[] =
@@ -19,7 +20,8 @@ const struct argp_option options[] = {
      'i',
      0,
      0,
-     "Read the current status registers. Mutually exclusive with 'output' and "
+     "Read the current status registers. Mutually exclusive with 'output' "
+     "and "
      "'num'"},
     {"shutdown",
      's',
@@ -27,6 +29,8 @@ const struct argp_option options[] = {
      0,
      "Shutdown ADC and disable power. Mutually exclusive with all other "
      "options."},
+    {"div", 'd', "divider", 0, "Divider, defaults to 20"},
+    {"avg", 'a', "averages", 0, "Averages, defaults to 1"},
     {"output",
      'o',
      "file",
@@ -39,7 +43,9 @@ const struct argp_option options[] = {
 struct adc_arguments {
     bool info;
     bool shutdown;
-    bool is_output_num_set;
+    bool is_acquire_mode;
+    size_t div;
+    size_t avg;
     char *output;
     size_t num;
 };

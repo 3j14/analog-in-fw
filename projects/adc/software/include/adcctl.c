@@ -62,6 +62,7 @@ int open_adc_trigger(int fd, struct adc_trigger *trigger) {
     }
     trigger->config = &trigger->_mmap[(offset / sizeof(uint32_t)) + 0];
     trigger->divider = &trigger->_mmap[(offset / sizeof(uint32_t)) + 1];
+    trigger->averages = &trigger->_mmap[(offset / sizeof(uint32_t)) + 2];
     return 0;
 }
 

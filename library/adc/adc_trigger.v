@@ -46,9 +46,11 @@ module adc_trigger (
     //      transaction (only if first bit is 0).
     localparam reg [29:0] AddrConfig = 30'h0000_0100;
     localparam reg [29:0] AddrDivider = 30'h0000_0104;
+    localparam reg [29:0] AddrAverages = 30'h0000_0108;
 
     reg [31:0] divider_reg = 32'b0;
     reg [31:0] config_reg = 32'b0;
+    reg [31:0] averages_reg = 1;
 
     reg [31:0] axi_lite_awaddr;
     reg        axi_lite_awready;
@@ -159,9 +161,11 @@ module adc_trigger (
     end
 
     assign s_axi_lite_rdata = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? config_reg :
-                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? divider_reg : 0;
+                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? divider_reg :
+                              (axi_lite_araddr[29:2] == AddrAverages[29:2]) ? averages_reg : 0;
     assign s_axi_lite_rresp = (axi_lite_araddr[29:2] == AddrConfig[29:2]) ? 2'b00 :
-                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? 2'b00 : 2'b10;
+                              (axi_lite_araddr[29:2] == AddrDivider[29:2]) ? 2'b00 :
+                              (axi_lite_araddr[29:2] == AddrAverages[29:2]) ? 2'b00 : 2'b10;
 
     // AXI4-Lite write logic
     always @(posedge aclk or negedge aresetn) begin
@@ -190,6 +194,12 @@ module adc_trigger (
                         );
                         axi_lite_bresp <= 2'b00;
                     end
+                    AddrAverages[29:2]: begin
+                        averages_reg <= write_register(
+                            s_axi_lite_wdata, s_axi_lite_wstrb, averages_reg
+                        );
+                        axi_lite_bresp <= 2'b00;
+                    end
                     default: axi_lite_bresp <= 2'b10;
                 endcase
             end
@@ -200,6 +210,7 @@ module adc_trigger (
         .clk(aclk),
         .resetn(aresetn),
         .divider(divider_reg),
+        .averages(averages_reg),
         .cfg(config_reg),
         .trigger(trigger),
         .cnv(cnv),
@@ -213,6 +224,7 @@ module adc_trigger_impl (
     input  wire        clk,
     input  wire        resetn,
     input  wire [31:0] divider,
+    input  wire [31:0] averages,
     input  wire [31:0] cfg,
     output reg         trigger = 0,
     output wire        cnv,
@@ -277,7 +289,7 @@ module adc_trigger_impl (
                 // ADC was previously busy but is now done, and downstream
                 // devices are ready to recieve data.
                 adc_busy <= 0;
-                trigger  <= 1;
+                trigger  <= (averages == 0) ? 1 : ((counter % averages) == 0);
             end else begin
                 if (trigger) begin
                     trigger <= 0;

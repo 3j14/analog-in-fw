@@ -17,18 +17,18 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
     struct adc_arguments *args = state->input;
     switch (key) {
         case 'i':
-            if (args->is_output_num_set || args->shutdown)
+            if (args->is_acquire_mode || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
             args->info = true;
             break;
         case 'o':
             if (args->info || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_output_num_set = true;
+            args->is_acquire_mode = true;
             args->output = arg;
             break;
         case 's':
-            if (args->info || args->is_output_num_set)
+            if (args->info || args->is_acquire_mode)
                 argp_error(
                     state, "--shutdown is mutually exclusive with all options"
                 );
@@ -36,7 +36,7 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
         case 'n':
             if (args->info || args->shutdown)
                 argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
-            args->is_output_num_set = true;
+            args->is_acquire_mode = true;
             args->num = (size_t)atoi(arg);
             if (args->num > MAX_NUM_SAMPLES)
                 argp_error(
@@ -45,6 +45,18 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
                     arg,
                     MAX_NUM_SAMPLES
                 );
+            break;
+        case 'd':
+            if (args->info || args->shutdown)
+                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
+            args->is_acquire_mode = true;
+            args->div = (size_t)atoi(arg);
+            break;
+        case 'a':
+            if (args->info || args->shutdown)
+                argp_error(state, INFO_MUTUALLY_EXCLUSIVE_ERROR);
+            args->is_acquire_mode = true;
+            args->avg = (size_t)atoi(arg);
             break;
         default:
             return ARGP_ERR_UNKNOWN;
@@ -62,7 +74,10 @@ int main(int argc, char *argv[]) {
     struct adc_arguments args;
     FILE *outfile;
     args.info = false;
-    args.is_output_num_set = false;
+    args.is_acquire_mode = false;
+    args.shutdown = false;
+    args.div = DEFAULT_DIVIDER;
+    args.avg = 1;
     args.output = DEFAULT_OUTPUT_FILE;
     args.num = DEFAULT_NUM_SAMPLES;
     argp_parse(&argp, argc, argv, 0, 0, &args);
@@ -104,6 +119,7 @@ int main(int argc, char *argv[]) {
         printf("packetizer iter counter:        %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
+        printf("adc_trigger averages:           %u\n", *adc.trigger.averages);
     } else if (args.shutdown) {
         *adc.config.config = 0;
     } else {
@@ -123,7 +139,7 @@ int main(int argc, char *argv[]) {
         *adc.config.config =
             ADC_PWR_EN | ADC_IO_EN | ADC_REF_EN | ADC_DIFFAMP_EN | ADC_OPAMP_EN;
         // Wait for power to stabilize
-        usleep(1000);
+        sleep(1);
 
         // Configure ADC
         write_adc_reg(&adc.config, ADC_REG_ENTER);
@@ -135,7 +151,7 @@ int main(int argc, char *argv[]) {
         // Configure trigger
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
-        *adc.trigger.divider = 50;
+        *adc.trigger.divider = args.div;
         puts("Start transfer");
 
         start_transfer(&channel, args.num * sizeof(uint32_t));

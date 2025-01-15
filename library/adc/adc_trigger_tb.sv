@@ -33,6 +33,7 @@ module adc_trigger_tb #(
     bit ready = 0;
     reg [31:0] divider = 0;
     reg [31:0] cfg = 0;
+    reg [31:0] averages = 1;
     wire trigger;
 
     adc_model adc (
@@ -45,6 +46,7 @@ module adc_trigger_tb #(
         .clk(clk),
         .resetn(resetn),
         .divider(divider),
+        .averages(averages),
         .cfg(cfg),
         .trigger(trigger),
         .cnv(cnv),
