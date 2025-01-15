@@ -159,30 +159,35 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma) {
     unsigned long size = vma->vm_end - vma->vm_start;
     unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
     unsigned long buffer_index;
+    int rc;
     struct dmadc_channel *channel;
 
     if (size > BUFFER_SIZE) {
-        printk(KERN_ERR "Requested memory range is too large\n");
+        printk(KERN_ERR "mmap: Requested memory range is too large\n");
         return -EINVAL;
     }
     if (offset % BUFFER_SIZE != 0) {
-        printk(KERN_ERR "Offset must be a multiple of the buffer size\n");
+        printk(KERN_ERR "mmap: Offset must be a multiple of the buffer size\n");
         return -EINVAL;
     }
     buffer_index = offset / BUFFER_SIZE;
     if (buffer_index >= BUFFER_COUNT) {
-        printk(KERN_ERR "Offset exceeds buffer memory range\n");
+        printk(KERN_ERR "mmap: Offset exceeds buffer memory range\n");
         return -EINVAL;
     }
 
     channel = (struct dmadc_channel *)file_p->private_data;
-    return dma_mmap_coherent(
+    unsigned long orig_pgoff = vma->vm_pgoff;
+    vma->vm_pgoff = 0;
+    rc = dma_mmap_coherent(
         channel->dma_dev,
         vma,
         channel->buffers[buffer_index].data,
         channel->buffers[buffer_index].phys_addr,
         size
     );
+    vma->vm_pgoff = orig_pgoff;
+    return rc;
 }
 
 /* Open the device file and set up the data pointer to the proxy channel data
