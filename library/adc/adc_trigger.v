@@ -238,6 +238,7 @@ module adc_trigger_impl (
     reg        adc_busy = 0;
     reg [ 1:0] state_clk = StateIdle;
     reg [31:0] counter = 32'b0;
+    reg [31:0] avg_counter = 1;
 
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
@@ -284,12 +285,18 @@ module adc_trigger_impl (
     always @(posedge clk or negedge busy or negedge resetn) begin
         if (!resetn) begin
             adc_busy <= 0;
+            avg_counter <= 1;
         end else begin
             if (adc_busy && !busy && ready) begin
                 // ADC was previously busy but is now done, and downstream
                 // devices are ready to recieve data.
                 adc_busy <= 0;
-                trigger  <= (averages == 0) ? 1 : ((counter % averages) == 0);
+                trigger  <= (averages == 0) ? 1 : (avg_counter == averages);
+                if (avg_counter < averages) begin
+                    avg_counter <= avg_counter + 1;
+                end else begin
+                    avg_counter <= 1;
+                end
             end else begin
                 if (trigger) begin
                     trigger <= 0;
