@@ -94,10 +94,6 @@ set_property CONFIG.DELAY_CYCLES {1} [get_bd_cells trigger_delay]
 # Inline logical and for ready signal
 create_bd_cell -type inline_hdl -vlnv xilinx.com:inline_hdl:ilvector_logic:1.0 ready_and
 
-# Fifo
-create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_fifo
-set_property CONFIG.FIFO_DEPTH {1024} [get_bd_cells axis_fifo]
-
 # DMA
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma
 set_property -dict [list \
@@ -147,14 +143,10 @@ connect_bd_net [get_bd_ports exp_adc_csn] [get_bd_pins adc_manager/spi_csn]
 connect_bd_net [get_bd_ports exp_adc_sck] [get_bd_pins adc_manager/spi_clk]
 connect_bd_net [get_bd_ports exp_adc_resetn] [get_bd_pins adc_manager/spi_resetn]
 connect_bd_net [get_bd_pins adc_manager/status] [get_bd_pins adc_config/status]
-# Fifo
-connect_bd_net $adc_clk [get_bd_pins axis_fifo/s_axis_aclk]
-connect_bd_net $aresetn_adc [get_bd_pins axis_fifo/s_axis_aresetn]
-connect_bd_intf_net [get_bd_intf_pins adc_manager/m_axis] [get_bd_intf_pins axis_fifo/s_axis]
 # Packetizer
 connect_bd_net $adc_clk [get_bd_pins packetizer/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins packetizer/aresetn]
-connect_bd_intf_net [get_bd_intf_pins axis_fifo/m_axis] [get_bd_intf_pins packetizer/s_axis_data]
+connect_bd_intf_net [get_bd_intf_pins adc_manager/m_axis] [get_bd_intf_pins packetizer/s_axis_data]
 # ADC Trigger
 connect_bd_net $adc_clk [get_bd_pins adc_trigger/aclk]
 connect_bd_net $aresetn_adc [get_bd_pins adc_trigger/aresetn]

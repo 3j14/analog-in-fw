@@ -226,7 +226,7 @@ module adc_trigger_impl (
     input  wire [31:0] divider,
     input  wire [31:0] averages,
     input  wire [31:0] cfg,
-    output reg         trigger = 0,
+    output wire        trigger,
     output wire        cnv,
     input  wire        busy,
     input  wire        last,
@@ -239,6 +239,7 @@ module adc_trigger_impl (
     reg [ 1:0] state_clk = StateIdle;
     reg [31:0] counter = 32'b0;
     reg [31:0] avg_counter = 1;
+    reg        trigger_acq = 0;
 
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
@@ -277,29 +278,32 @@ module adc_trigger_impl (
     // state_clk[1] is only set if the current state is 'StateRun'
     // and downstream devices are ready
     assign cnv = ready & state_clk[1] & (counter == divider) & |counter;
+    assign trigger = ready & trigger_acq;
 
     // Technically, 'busy' is not aligned with the clock. However,
     // the busy signal is usually high for more than 200 ns,
     // whereas a clock cycle is 20 ns, so it should be sufficient
     // to assume synchronicity with the clock.
-    always @(posedge clk or negedge busy or negedge resetn) begin
+    always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             adc_busy <= 0;
-            avg_counter <= 1;
+            avg_counter <= 0;
         end else begin
-            if (adc_busy && !busy && ready) begin
+            if (adc_busy && !busy) begin
                 // ADC was previously busy but is now done, and downstream
                 // devices are ready to recieve data.
                 adc_busy <= 0;
-                trigger  <= (averages == 0) ? 1 : (avg_counter == averages);
-                if (avg_counter < averages) begin
-                    avg_counter <= avg_counter + 1;
+                if (averages <= 1) begin
+                    trigger_acq <= 1;
+                end else if (avg_counter >= averages - 1) begin
+                    trigger_acq <= 1;
+                    avg_counter <= 0;
                 end else begin
-                    avg_counter <= 1;
+                    avg_counter <= avg_counter + 1;
                 end
             end else begin
-                if (trigger) begin
-                    trigger <= 0;
+                if (trigger_acq) begin
+                    trigger_acq <= 0;
                 end
                 if (busy) begin
                     adc_busy <= 1;

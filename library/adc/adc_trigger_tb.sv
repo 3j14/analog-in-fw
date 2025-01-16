@@ -77,6 +77,7 @@ module adc_trigger_tb #(
         #(divider * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");
         @(negedge busy);
+        @(posedge clk) #(Period);
         @(posedge clk) if (!trigger) $error("Acquisition not triggered");
         @(negedge cnv);
         #((divider + 1) * 2 * Period);
@@ -96,7 +97,7 @@ module adc_trigger_tb #(
         @(posedge clk) cfg[1] = 1'b0;
         #(divider * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");
-        #(4 * Period);
+        #(20 * divider * 2 * Period);
         $finish();
     end
 
