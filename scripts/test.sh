@@ -4,6 +4,8 @@ set -euo pipefail
 TESTBENCHES=$(find library -path library/red-pitaya-notes -prune -false -o -name \*_tb.sv)
 BUILD_DIR="./build/verilator"
 mkdir -p -- "$BUILD_DIR"
+TRACE_DIR="./build/traces"
+mkdir -p -- "$TRACE_DIR"
 declare -a otherfiles
 
 case "$(uname -s)" in
