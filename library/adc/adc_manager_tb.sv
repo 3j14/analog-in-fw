@@ -206,7 +206,7 @@ module adc_manager_tb #(
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
-        m_axis_tdata = {8'b0, 1'b0, 15'h0015, 8'b01};
+        m_axis_tdata = {8'b0, 1'b0, 15'h0015, 8'b1};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
