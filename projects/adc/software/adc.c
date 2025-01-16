@@ -43,6 +43,14 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
             break;
         case 'a':
             args->avg = (size_t)atoi(arg);
+            if (args->avg > MAX_NUM_AVG) {
+                argp_error(
+                    state,
+                    "Invalid number of averages '%s'. Max: %u",
+                    arg,
+                    MAX_NUM_AVG
+                );
+            }
             break;
         default:
             return ARGP_ERR_UNKNOWN;
@@ -63,7 +71,7 @@ int main(int argc, char *argv[]) {
     args.shutdown = false;
     args.test = false;
     args.div = DEFAULT_DIVIDER;
-    args.avg = 1;
+    args.avg = 0;
     args.output = DEFAULT_OUTPUT_FILE;
     args.num = DEFAULT_NUM_SAMPLES;
     argp_parse(&argp, argc, argv, 0, 0, &args);
@@ -108,7 +116,6 @@ int main(int argc, char *argv[]) {
         printf("packetizer iter counter:        %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
-        printf("adc_trigger averages:           %u\n", *adc.trigger.averages);
     } else {
         outfile = fopen(args.output, "w");
         if (outfile == NULL) {
@@ -130,22 +137,30 @@ int main(int argc, char *argv[]) {
 
         // Configure ADC
         write_adc_reg(&adc.config, ADC_REG_ENTER);
+        usleep(250 * 1000);
+        // Configure averages
+        write_adc_reg(
+            &adc.config, ADC_REG(0, ADC_REG_AVG, (uint8_t)(0x1F & args.avg))
+        );
+        usleep(250 * 1000);
+
         uint8_t mode =
             ADC_REG_MODE_4_LANE | ADC_REG_MODE_SPI_CLK | ADC_REG_MODE_SDR;
         if (args.test) {
             mode |= ADC_REG_MODE_TEST;
-        } else if (args.avg > 1) {
+        } else if (args.avg >= 1) {
             mode |= ADC_REG_MODE_32BIT_AVG;
         } else {
             mode |= ADC_REG_MODE_32BIT_COM;
         }
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
+        usleep(250 * 1000);
         write_adc_reg(&adc.config, ADC_REG_EXIT);
+        usleep(250 * 1000);
 
         // Configure trigger
         *adc.trigger.config = ADC_TRIGGER_CLEAR;
         *adc.trigger.config = ADC_TRIGGER_ONCE;
-        *adc.trigger.averages = args.avg;
         *adc.trigger.divider = args.div;
         puts("Start transfer");
 

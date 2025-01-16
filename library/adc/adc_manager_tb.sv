@@ -193,7 +193,7 @@ module adc_manager_tb #(
     end
 
     initial begin
-        $dumpfile("build/verilator/adc_manager_tb/trace.vcd");
+        $dumpfile("build/traces/adc_manager_tb.vcd");
         $dumpvars();
         m_axis_tdata = {8'b0, 3'b101, 21'b0};
 
@@ -203,6 +203,10 @@ module adc_manager_tb #(
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 
         m_axis_tdata = {8'b0, 1'b0, 15'h0020, 2'b10, 6'b0};
+        @(posedge clk) m_axis_tvalid = 1;
+        @(negedge m_axis_tready) m_axis_tvalid = 0;
+
+        m_axis_tdata = {8'b0, 1'b0, 15'h0015, 8'b01};
         @(posedge clk) m_axis_tvalid = 1;
         @(negedge m_axis_tready) m_axis_tvalid = 0;
 

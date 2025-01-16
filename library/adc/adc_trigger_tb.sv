@@ -7,6 +7,13 @@ module adc_model #(
     input  wire cnv,
     output reg  busy = 0
 );
+    // Simplified model of the ADC
+    // On each cnv, the busy signal is asserted for a specified conversion time.
+    // If a second conversion is triggered during the busy phase, an error is
+    // thrown.
+    //
+    // NOTE: In reality, the ADC accepts re-asserting the CNV trigger during
+    // a busy phase when configured in averaging mode.
     always @(posedge cnv or negedge resetn) begin
         if (!resetn) begin
             busy <= 0;
@@ -33,7 +40,6 @@ module adc_trigger_tb #(
     bit ready = 0;
     reg [31:0] divider = 0;
     reg [31:0] cfg = 0;
-    reg [31:0] averages = 1;
     wire trigger;
 
     adc_model adc (
@@ -46,7 +52,6 @@ module adc_trigger_tb #(
         .clk(clk),
         .resetn(resetn),
         .divider(divider),
-        .averages(averages),
         .cfg(cfg),
         .trigger(trigger),
         .cnv(cnv),
@@ -58,17 +63,43 @@ module adc_trigger_tb #(
     always #(Period) clk <= ~clk;
 
     bit has_cnv = 0;
+    bit pending_acq = 0;
+    bit has_busy = 0;
+    bit expect_trigger = 0;
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             has_cnv <= 0;
+            has_busy <= 0;
+            pending_acq <= 0;
+            expect_trigger <= 0;
         end else begin
             if (cnv) begin
                 has_cnv <= 1;
+            end
+            if (has_cnv && busy) begin
+                has_busy <= 1;
+                has_cnv  <= 0;
+            end
+            if (has_busy && !busy) begin
+                pending_acq <= 1;
+                has_busy <= 0;
+            end
+            if (pending_acq && busy) begin
+                expect_trigger <= 1;
+                pending_acq <= 0;
+            end
+            if (expect_trigger) begin
+                expect_trigger <= 0;
+                if (!trigger) begin
+                    $error("Acquisition not triggered");
+                end
             end
         end
     end
 
     initial begin
+        $dumpfile("build/traces/adc_trigger_tb.vcd");
+        $dumpvars();
         #(4 * Period) @(posedge clk) resetn = 1;
         #(10 * Period) @(posedge clk) divider = 50;
         #(divider * 2 * Period);
@@ -77,8 +108,6 @@ module adc_trigger_tb #(
         #(divider * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");
         @(negedge busy);
-        @(posedge clk) #(Period);
-        @(posedge clk) if (!trigger) $error("Acquisition not triggered");
         @(negedge cnv);
         #((divider + 1) * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");

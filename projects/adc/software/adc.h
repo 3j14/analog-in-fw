@@ -8,6 +8,7 @@
 #define DEFAULT_DIVIDER     20
 #define DEFAULT_NUM_SAMPLES BUFFER_SIZE / sizeof(uint32_t)
 #define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
+#define MAX_NUM_AVG         0x10
 
 const char *argp_program_version = "adc 0.1.0";
 const char adc_docs[] =
@@ -16,7 +17,7 @@ const struct argp_option options[] = {
     {"info", 'i', 0, 0, "Read the current status registers"},
     {"shutdown", 's', 0, 0, "Shutdown ADC and disable power"},
     {"div", 'd', "divider", 0, "Divider, defaults to 20"},
-    {"avg", 'a', "averages", 0, "Averages, defaults to 1"},
+    {"avg", 'a', "averages", 0, "Averages, defaults to 0, max: 16"},
     {"test", 't', 0, 0, "Test pattern mode"},
     {"output",
      'o',
