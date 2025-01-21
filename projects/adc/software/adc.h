@@ -24,7 +24,7 @@ const struct argp_option options[] = {
      "file",
      0,
      "Output file for the data, defaults to " DEFAULT_OUTPUT_FILE},
-    {"num", 'n', "count", 0, "Number of samples, defaults to 1024"},
+    {"num", 'n', "count", 0, "Number of samples, defaults to 2048"},
     {0}
 };
 
