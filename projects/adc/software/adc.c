@@ -41,6 +41,9 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
         case 'd':
             args->div = (size_t)atoi(arg);
             break;
+        case 'w':
+            args->timeout_ms = (size_t)atoi(arg);
+            break;
         case 'a':
             args->avg = (size_t)atoi(arg);
             if (args->avg > MAX_NUM_AVG) {
@@ -73,6 +76,7 @@ int main(int argc, char *argv[]) {
     args.div = DEFAULT_DIVIDER;
     args.avg = 0;
     args.output = DEFAULT_OUTPUT_FILE;
+    args.timeout_ms = DEFAULT_TIMEOUT_MS;
     args.num = DEFAULT_NUM_SAMPLES;
     argp_parse(&argp, argc, argv, 0, 0, &args);
 
@@ -164,6 +168,7 @@ int main(int argc, char *argv[]) {
         *adc.trigger.divider = args.div;
         puts("Start transfer");
 
+        set_timeout_ms(&channel, args.timeout_ms);
         start_transfer(&channel, args.num * sizeof(uint32_t));
         // Configure packetizer
         set_packatizer_save(&adc.pack, args.num);

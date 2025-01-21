@@ -69,7 +69,19 @@ int close_dma_channel(struct dmadc_channel *channel) {
 }
 
 long start_transfer(struct dmadc_channel *channel, unsigned int size) {
-    return ioctl(channel->fd, START_TRANSFER, &size);
+    unsigned int size_and_rc = size;
+    long rc = ioctl(channel->fd, START_TRANSFER, &size_and_rc);
+    if (rc != 0)
+        return -errno;
+    return size_and_rc;
+}
+
+long set_timeout_ms(struct dmadc_channel *channel, unsigned int timeout_ms) {
+    unsigned int _timeout = timeout_ms;
+    long rc = ioctl(channel->fd, SET_TIMEOUT_MS, &_timeout);
+    if (rc != 0)
+        return -errno;
+    return 0;
 }
 
 enum dmadc_status wait_for_transfer(struct dmadc_channel *channel) {

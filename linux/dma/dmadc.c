@@ -63,6 +63,8 @@ struct dmadc_channel {
     struct dma_chan *dma_channel;
     struct completion cmp;
     dma_cookie_t cookie;
+
+    unsigned int timeout_ms;
 };
 
 struct dmadc {
@@ -77,6 +79,8 @@ static long start_transfer(struct dmadc_channel *channel, unsigned int size) {
     enum dma_ctrl_flags flags = DMA_CTRL_ACK | DMA_PREP_INTERRUPT;
     struct dma_async_tx_descriptor *chan_desc;
     struct dma_device *dma_device = channel->dma_channel->device;
+    // Reset cookie
+    channel->cookie = 0;
 
     buffer_count = DIV_ROUND_UP(size, BUFFER_SIZE);
     if (buffer_count > BUFFER_COUNT) {
@@ -118,7 +122,7 @@ static long start_transfer(struct dmadc_channel *channel, unsigned int size) {
         dma_unmap_sg(
             channel->dma_dev, channel->sglist, buffer_count, DMA_FROM_DEVICE
         );
-        return -EFAULT;
+        return dma_submit_error(channel->cookie);
     }
 
     dma_async_issue_pending(channel->dma_channel);
@@ -126,6 +130,11 @@ static long start_transfer(struct dmadc_channel *channel, unsigned int size) {
 }
 
 static enum dmadc_status get_status(struct dmadc_channel *channel) {
+    if (channel->cookie == 0)
+        return DMADC_NO_TRANSFER;
+    if (channel->cookie < 0)
+        return DMADC_SUBMIT_ERROR;
+
     enum dma_status status = dma_async_is_tx_complete(
         channel->dma_channel, channel->cookie, NULL, NULL
     );
@@ -144,8 +153,13 @@ static enum dmadc_status get_status(struct dmadc_channel *channel) {
 /* Wait for a DMA transfer that was previously submitted to the DMA engine
  */
 static enum dmadc_status wait_for_transfer(struct dmadc_channel *channel) {
+    if (channel->cookie == 0)
+        return DMADC_NO_TRANSFER;
+    if (channel->cookie < 0)
+        return DMADC_SUBMIT_ERROR;
+
     unsigned long timeout = wait_for_completion_timeout(
-        &channel->cmp, msecs_to_jiffies(DMADC_TIMEOUT_MS)
+        &channel->cmp, msecs_to_jiffies(channel->timeout_ms)
     );
     if (timeout == 0) {
         printk(KERN_ERR "DMA timed out\n");
@@ -212,8 +226,10 @@ static int release(struct inode *ino, struct file *file) {
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
     struct dmadc_channel *channel = (struct dmadc_channel *)file->private_data;
     unsigned int size;
+    unsigned int timeout_ms;
     enum dmadc_status status;
     int rc;
+    unsigned int start_result;
 
     switch (cmd) {
         case START_TRANSFER:
@@ -221,7 +237,13 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
                 copy_from_user(&size, (unsigned int __user *)arg, sizeof(size));
             if (rc)
                 return -EINVAL;
-            start_transfer(channel, size);
+            rc = (int)start_transfer(channel, size);
+            start_result = (rc < 0) ? -rc : 0;
+            rc = copy_to_user(
+                (unsigned int __user *)arg, &start_result, sizeof(start_result)
+            );
+            if (rc)
+                return -EINVAL;
             break;
         case WAIT_FOR_TRANSFER:
             status = wait_for_transfer(channel);
@@ -238,6 +260,14 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
             );
             if (rc)
                 return -EINVAL;
+            break;
+        case SET_TIMEOUT_MS:
+            rc = copy_from_user(
+                &timeout_ms, (unsigned int __user *)arg, sizeof(timeout_ms)
+            );
+            if (rc)
+                return -EINVAL;
+            channel->timeout_ms = timeout_ms;
             break;
         default:
             return -EINVAL;
@@ -411,6 +441,7 @@ static int dmadc_probe(struct platform_device *pdev) {
     }
     printk(KERN_INFO "Allocated %u buffers\n", BUFFER_COUNT);
     dma->dmadc_channel->sg_len = BUFFER_COUNT;
+    dma->dmadc_channel->timeout_ms = DMADC_TIMEOUT_MS;
 
     // Setup chartacter device
     rc = cdevice_init(dma->dmadc_channel);

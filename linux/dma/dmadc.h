@@ -35,6 +35,8 @@ enum dmadc_status {
     DMADC_PAUSED = 2,
     DMADC_ERROR = 3,
     DMADC_TIMEOUT = 4,
+    DMADC_NO_TRANSFER = 5,
+    DMADC_SUBMIT_ERROR = 6,
 };
 static const char *dmadc_status_strings[] = {
     "complete", "in progresss", "paused", "error", "timeout"
@@ -43,3 +45,4 @@ static const char *dmadc_status_strings[] = {
 #define START_TRANSFER    _IOW('a', 'a', unsigned int *)
 #define WAIT_FOR_TRANSFER _IOR('a', 'b', enum dmadc_status *)
 #define STATUS            _IOR('a', 'c', enum dmadc_status *)
+#define SET_TIMEOUT_MS    _IOW('a', 'd', unsigned int *)
