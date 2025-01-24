@@ -36,14 +36,34 @@ module adc_trigger (
     `include "axi4lite_helpers.vh"
     // Address configuration:
     //  - Config register:
-    //      Base address: 0x?000_0100, 32bit large.
-    //      If least significant bit is 1, the trigger
-    //      will run continuously, not stopping when one
-    //      complete DMA transaction is made. If 0, the
-    //      trigger will stop as soon as the first
-    //      transaction is completed.
-    //      Write 1 to the second bit to start the next
-    //      transaction (only if first bit is 0).
+    //      Base address: 0x?000_0100, 32-bit large.
+    //  - Divider register:
+    //      Base address: 0x?000_0104, 32-bit large
+    //
+    // Config register:
+    // +----------+--------+---------+------------+
+    // | RESERVED | ZONE_1 | RESTART | CONTINUOUS |
+    // +----------+--------+---------+------------+
+    // |     31-4 |      2 |       1 |          0 |
+    // +----------+--------+---------+------------+
+    //
+    // - CONTINUOUS: If zero, after each full transfer (LAST signal asserted by
+    //     packetizer), the trigger stops. Writing 1 to this bit makes the
+    //     trigger continuous.
+    // - RESTART: Writing 1 to this bit will restart the trigger if not in
+    //     continuous mode
+    // - ZONE_1: Enable acquisition in "Zone 1", directly after the falling
+    //     edge of BUSY. By default, this is zero and the acquisition is done
+    //     at the next rising edge of CNV.
+    // - RESERVED: Not in use, writing to this has no effect
+    //
+    // Divider regsiter:
+    // +------+
+    // |  DIV |
+    // +------+
+    // | 31-0 |
+    // +------+
+    // - DIV: Unsigned integer, number of clock cycles per conversion.
     localparam reg [29:0] AddrConfig = 30'h0000_0100;
     localparam reg [29:0] AddrDivider = 30'h0000_0104;
 
@@ -277,13 +297,19 @@ module adc_trigger_impl (
                 // Always reset trigger
                 acq_trigger <= 0;
             end
+            if (cfg[2]) begin
+                // In "Zone 1" mode, acq_pending is not used. Set it to zero
+                // to avoid triggering, for example when switching zone mode
+                // during a transaction.
+                acq_pending <= 0;
+            end
             if (busy) begin
                 if (!adc_busy) begin
                     // Rising edge of 'busy'
                     adc_busy <= 1;
                     if (acq_pending) begin
                         // Trigger previous pending acquisition
-                        acq_trigger <= acq_pending;
+                        acq_trigger <= 1;
                         acq_pending <= 0;
                     end
                 end
@@ -292,7 +318,11 @@ module adc_trigger_impl (
                 if (adc_busy) begin
                     // Falling edge of 'busy'
                     adc_busy <= 0;
-                    acq_pending <= 1;
+                    if (cfg[2]) begin
+                        acq_trigger <= 1;
+                    end else begin
+                        acq_pending <= 1;
+                    end
                 end
             end
         end

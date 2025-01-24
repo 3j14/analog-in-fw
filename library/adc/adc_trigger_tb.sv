@@ -81,8 +81,13 @@ module adc_trigger_tb #(
                 has_cnv  <= 0;
             end
             if (has_busy && !busy) begin
-                pending_acq <= 1;
                 has_busy <= 0;
+                if (cfg[2]) begin
+                    expect_trigger <= 1;
+                    pending_acq <= 0;
+                end else begin
+                    pending_acq <= 1;
+                end
             end
             if (pending_acq && busy) begin
                 expect_trigger <= 1;
@@ -126,6 +131,9 @@ module adc_trigger_tb #(
         @(posedge clk) cfg[1] = 1'b0;
         #(divider * 2 * Period);
         @(posedge clk) if (!cnv) $error("Conversion not triggered");
+        #(20 * divider * 2 * Period);
+        @(posedge clk) cfg[2] = 1'b1;
+        pending_acq = 1'b0;
         #(20 * divider * 2 * Period);
         $finish();
     end
