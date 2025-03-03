@@ -44,6 +44,12 @@ static error_t parse_args(int key, char *arg, struct argp_state *state) {
         case 'w':
             args->timeout_ms = (size_t)atoi(arg);
             break;
+        case 'z':
+            args->zone = (unsigned int)atoi(arg);
+            if (args->zone != 1 && args->zone != 2) {
+                argp_error(state, "Invalid zone: '%s'. Valid zones: 1, 2", arg);
+            }
+            break;
         case 'a':
             args->avg = (size_t)atoi(arg);
             if (args->avg > MAX_NUM_AVG) {
@@ -75,6 +81,7 @@ int main(int argc, char *argv[]) {
     args.test = false;
     args.div = DEFAULT_DIVIDER;
     args.avg = 0;
+    args.zone = 2;
     args.output = DEFAULT_OUTPUT_FILE;
     args.timeout_ms = DEFAULT_TIMEOUT_MS;
     args.num = DEFAULT_NUM_SAMPLES;
@@ -98,11 +105,13 @@ int main(int argc, char *argv[]) {
             : (dev_mode == ADC_STATUS_MODE_REG_ACCESS_ONCE) ? "reg_access_once"
             : (dev_mode == ADC_STATUS_MODE_REG_ACCESS)      ? "reg_access"
                                                             : "err";
+        uint32_t trigger_conf = *adc.trigger.config & 3;
         char *trigger_config_str =
-            (*adc.trigger.config == ADC_TRIGGER_ONCE)         ? "trigger_once"
-            : (*adc.trigger.config == ADC_TRIGGER_CONTINUOUS) ? "continuous"
-            : (*adc.trigger.config == ADC_TRIGGER_CLEAR)      ? "clear"
-                                                              : "err";
+            (trigger_conf == ADC_TRIGGER_ONCE)         ? "trigger_once"
+            : (trigger_conf == ADC_TRIGGER_CONTINUOUS) ? "continuous"
+            : (trigger_conf == ADC_TRIGGER_CLEAR)      ? "clear"
+                                                       : "err";
+        bool is_zone_1 = (bool)((*adc.trigger.config >> 2) & 1);
 
         uint32_t last_reg = get_adc_last_reg(&adc.config);
         puts("ADC Status:");
@@ -119,6 +128,7 @@ int main(int argc, char *argv[]) {
         );
         printf("packetizer iter counter:        %u\n", *adc.pack.iter_counter);
         printf("adc_trigger config:             %s\n", trigger_config_str);
+        printf("adc_trigger zone_1:             %s\n", yesno(is_zone_1));
         printf("adc_trigger divider:            %u\n", *adc.trigger.divider);
     } else {
         outfile = fopen(args.output, "w");
@@ -163,8 +173,13 @@ int main(int argc, char *argv[]) {
         usleep(250 * 1000);
 
         // Configure trigger
-        *adc.trigger.config = ADC_TRIGGER_CLEAR;
-        *adc.trigger.config = ADC_TRIGGER_ONCE;
+        *adc.trigger.config |= ADC_TRIGGER_CLEAR;
+        *adc.trigger.config &= ~ADC_TRIGGER_CONTINUOUS;
+        if (args.zone == 1) {
+            *adc.trigger.config |= ADC_TRIGGER_ZONE_1;
+        } else {
+            *adc.trigger.config &= ~ADC_TRIGGER_ZONE_1;
+        }
         *adc.trigger.divider = args.div;
         puts("Start transfer");
 

@@ -284,9 +284,6 @@ module adc_trigger_impl (
     assign cnv = ready & state_clk[1] & (counter == divider) & |counter;
     assign trigger = ready & acq_trigger;
 
-    // Acquisition trigger logic for 'zone 2' acquisition. After each
-    // conversion, the data is acquired at the beginning of the subsequent
-    // conversion.
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             adc_busy <= 0;

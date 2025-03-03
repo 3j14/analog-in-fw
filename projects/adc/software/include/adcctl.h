@@ -55,7 +55,8 @@ struct packetizer {
 
 #define ADC_TRIGGER_ONCE       (uint32_t)0
 #define ADC_TRIGGER_CONTINUOUS (uint32_t)1
-#define ADC_TRIGGER_CLEAR      (uint32_t)2
+#define ADC_TRIGGER_CLEAR      (uint32_t)(1 << 1)
+#define ADC_TRIGGER_ZONE_1     (uint32_t)(1 << 2)
 
 #define ADC_TRIGGER_ADDR_RANGE 256
 #define ADC_TRIGGER_ADDR       0x40000100

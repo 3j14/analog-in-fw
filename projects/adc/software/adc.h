@@ -21,6 +21,7 @@ const struct argp_option options[] = {
     {"avg", 'a', "averages", 0, "Averages, defaults to 0, max: 16"},
     {"timeout", 'w', "timeout_ms", 0, "Timeout, defaults to 10000"},
     {"test", 't', 0, 0, "Test pattern mode"},
+    {"zone", 'z', "zone", 0, "Zone, can be either 1 or 2, default to 2"},
     {"output",
      'o',
      "file",
@@ -39,6 +40,7 @@ struct adc_arguments {
     char *output;
     size_t num;
     unsigned int timeout_ms;
+    unsigned int zone;
 };
 
 static error_t parse_args(int key, char *arg, struct argp_state *state);
