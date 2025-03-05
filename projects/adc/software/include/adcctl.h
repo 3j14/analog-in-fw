@@ -17,6 +17,9 @@
 #define ADC_REG_ENTER          (uint32_t)(0b101 << 21)
 #define ADC_REG_MODE_ADDR      0x20
 #define ADC_REG_AVG            0x15
+#define ADC_REG_OUT            0x22
+#define ADC_REG_OUT_NORMAL     (uint8_t)0
+#define ADC_REG_OUT_DOUBLE     (uint8_t)1
 #define ADC_REG_MODE_1_LANE    (uint8_t)0
 #define ADC_REG_MODE_2_LANE    (uint8_t)(1 << 6)
 #define ADC_REG_MODE_4_LANE    (uint8_t)(2 << 6)

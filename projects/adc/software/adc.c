@@ -168,6 +168,7 @@ int main(int argc, char *argv[]) {
             mode |= ADC_REG_MODE_32BIT_COM;
         }
         write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_MODE_ADDR, mode));
+        write_adc_reg(&adc.config, ADC_REG(0, ADC_REG_OUT, ADC_REG_OUT_DOUBLE));
         usleep(250 * 1000);
         write_adc_reg(&adc.config, ADC_REG_EXIT);
         usleep(250 * 1000);
