@@ -38,7 +38,10 @@
 #
 SHELL=/bin/bash
 .ONESHELL:
-.SHELLFLAGS := -eu -o pipefail -c
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -eu -o pipefail -c
+.SUFFIXES:
+.DEFAULT_GOAL: all
 
 PROJECT ?= adc
 PART ?= xc7z010clg400-1
