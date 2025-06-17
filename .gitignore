@@ -13,5 +13,7 @@ _ide
 .rigel_looper
 # debootstrap
 wget-log*
-# clangd:
+# clangd
 compile_commands.json
+# ccache
+.cache
