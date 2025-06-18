@@ -93,7 +93,19 @@ DTS_SOURCES += $(wildcard dts/*.dts)
 LINUX_OTHER_SOURCES := linux/linux-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES := linux/linux-configfs-$(LINUX_VERSION).patch
 LINUX_OTHER_SOURCES += linux/xilinx_zynq_defconfig
+LINUX_CFLAGS := -O2
+LINUX_CFLAGS += -mtune=cortex-a9
+LINUX_CFLAGS += -mfpu=neon
+LINUX_CFLAGS += -mfloat-abi=hard
+LINUX_CFLAGS += -march=armv7-a
+LINUX_CFLAGS += -meabi gnu
+LINUX_CFLAGS += -marm
+CFLAGS := $(LINUX_CFLAGS)
+CFLAGS += -std=gnu11
+CFLAGS += -Uarm
+CFLAGS += -Wall
 LINUX_MAKE_FLAGS := ARCH=arm
+LINUX_MAKE_FLAGS += CFLAGS="$(LINUX_CFLAGS)"
 LINUX_MAKE_FLAGS += LLVM=1
 
 SOURCES := $(wildcard library/*/*.v)
@@ -301,7 +313,7 @@ build/fpgautil: build/fpgautil.c
 
 $(BUILD_DIR)/software/%: ./projects/$(PROJECT)/software/%.c $(EXTRA_EXE_SOURCES)
 	mkdir -p -- $(@D)
-	$(MAKE) -C $(<D) BUILD_DIR=$(abspath $(@D)) $(abspath $@)
+	$(MAKE) -C $(<D) CFLAGS="$(CFLAGS)" BUILD_DIR=$(abspath $(@D)) $(abspath $@)
 
 .PHONY: verilator-lint
 verilator-lint: $(HDL_FILES)

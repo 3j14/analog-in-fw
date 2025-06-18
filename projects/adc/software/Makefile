@@ -9,19 +9,12 @@ endif
 DMA_DIR := $(abspath ../../../linux/dma)
 
 CC := clang
-CFLAGS := -O0
+CFLAGS ?= -O0
 CFLAGS += --target=arm-linux-gnueabihf
 CFLAGS += --sysroot=$(SYSROOT)
-CFLAGS += -march=armv7-a
-CFLAGS += -mtune=cortex-a9
-CFLAGS += -meabi gnu
-CFLAGS += -marm
-CFLAGS += -std=gnu11
 ifneq ("$(LOCAL_SYSROOT)","0")
 CFLAGS += --gcc-toolchain=$(SYSROOT)/../..
 endif
-CFLAGS += -Uarm
-CFLAGS += -Wall
 CFLAGS += -I$(DMA_DIR) -I. -Iinclude
 
 SOURCES := $(wildcard *.[ch])
