@@ -10,12 +10,11 @@ DMA_DIR := $(abspath ../../../linux/dma)
 
 CC := clang
 CFLAGS ?= -O0
-CFLAGS += --target=arm-linux-gnueabihf
-CFLAGS += --sysroot=$(SYSROOT)
+override CFLAGS += --sysroot=$(SYSROOT)
 ifneq ("$(LOCAL_SYSROOT)","0")
-CFLAGS += --gcc-toolchain=$(SYSROOT)/../..
+override CFLAGS += --gcc-toolchain=$(SYSROOT)/../..
 endif
-CFLAGS += -I$(DMA_DIR) -I. -Iinclude
+override CFLAGS += -I$(DMA_DIR) -I. -Iinclude
 
 SOURCES := $(wildcard *.[ch])
 SOURCES += $(wildcard include/*.[ch])

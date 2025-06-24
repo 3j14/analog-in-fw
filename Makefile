@@ -100,7 +100,7 @@ LINUX_CFLAGS += -mfloat-abi=hard
 LINUX_CFLAGS += -march=armv7-a
 LINUX_CFLAGS += -meabi gnu
 LINUX_CFLAGS += -marm
-CFLAGS := $(LINUX_CFLAGS)
+CFLAGS := --target=arm-linux-gnueabihf $(LINUX_CFLAGS)
 CFLAGS += -std=gnu11
 CFLAGS += -Uarm
 CFLAGS += -Wall
