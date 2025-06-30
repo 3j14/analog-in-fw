@@ -43,6 +43,8 @@ SHELL := /usr/bin/env
 .SUFFIXES:
 .DEFAULT_GOAL: all
 
+NPROC = $(shell nproc 2> /dev/null || echo 1)
+
 PROJECT ?= adc
 PART ?= xc7z010clg400-1
 PROCESSOR ?= ps7_cortexa9_0
@@ -55,7 +57,7 @@ VIVADO_MODE ?= batch
 VIVADO_ARGS ?= -mode $(VIVADO_MODE) -log build/vivado.log -journal build/vivado.jou
 _VIVADO := $(VIVADO) $(VIVADO_ARGS)
 
-VIVADO_VERSION ?= 2024.2
+VIVADO_VERSION ?= 2025.1
 REQUIRED_VIVADO_VERSION ?= $(VIVADO_VERSION)
 export REQUIRED_VIVADO_VERSION
 
@@ -259,7 +261,7 @@ $(BUILD_DIR)/$(PROJECT).bit: $(BUILD_DIR)/$(PROJECT).runs/impl_1
 
 $(BUILD_DIR)/$(PROJECT).runs/impl_1: $(BUILD_DIR)/$(PROJECT).xpr
 	# Run the implementation script for the current project
-	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT)
+	$(VIVADO) $(VIVADO_ARGS) -source scripts/impl.tcl -tclargs $(PROJECT) $(NPROC)
 
 $(BUILD_DIR)/$(PROJECT).xpr: $(SOURCES)
 	# Create the project directory
@@ -286,7 +288,7 @@ build/zImage.bin: build/linux-$(LINUX_VERSION)
 	#
 	# Cross-compile Linux for Red Pitaya
 	$(MAKE) -C $< $(LINUX_MAKE_FLAGS) \
-		-j $(shell nproc 2> /dev/null || echo 1) \
+		-j $(NPROC) \
 		LOADADDR=0x8000 \
 		xilinx_zynq_defconfig \
 		zImage \
