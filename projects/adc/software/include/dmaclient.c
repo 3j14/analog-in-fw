@@ -16,54 +16,45 @@ int open_dma_channel(struct dmadc_channel *channel) {
         fprintf(stderr, "Unable to open '/dev/dmadc'. Is the driver loaded?\n");
         return -errno;
     }
-
-    // Make sure all pointers to buffers are initiallized with null pointers
-    for (unsigned int i = 0; i < BUFFER_COUNT; i++) {
-        channel->buffers[i] = NULL;
-    }
+    channel->buffer = NULL;
+    channel->mapped_size = 0;
 
     return 0;
 }
 
-int dmadc_mmap(struct dmadc_channel *channel, size_t buffer_index) {
-    off_t offset = (buffer_index * BUFFER_SIZE);
-    void *buffer = mmap(
-        NULL,
-        BUFFER_SIZE,
-        PROT_READ | PROT_WRITE,
-        MAP_SHARED,
-        channel->fd,
-        offset
-    );
+int dmadc_mmap(struct dmadc_channel *channel, size_t size) {
+    if (size > DMADC_BUFFER_SIZE) {
+        fprintf(
+            stderr,
+            "Requested size %zu exceeds buffer capacity %u\n",
+            size,
+            DMADC_BUFFER_SIZE
+        );
+        return -EINVAL;
+    }
+
+    void *buffer =
+        mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, channel->fd, 0);
     if (buffer == MAP_FAILED) {
         return -errno;
     }
-    channel->buffers[buffer_index] = (uint32_t *)buffer;
+    channel->buffer = (uint32_t *)buffer;
+    channel->mapped_size = size;
     return 0;
 }
 
-int dmadc_mmap_buffers(struct dmadc_channel *channel, size_t size) {
-    int rc;
-    size_t i, buffers = (size / BUFFER_SIZE);
-    if (size % BUFFER_SIZE != 0)
-        buffers += 1;
-    for (i = 0; i < buffers; i++) {
-        rc = dmadc_mmap(channel, i);
-        if (rc < 0) {
-            return rc;
-        }
-    }
-    return 0;
+int dmadc_mmap_buffer(struct dmadc_channel *channel, size_t size) {
+    return dmadc_mmap(channel, size);
 }
 
 int close_dma_channel(struct dmadc_channel *channel) {
-    for (unsigned int i = 0; i < BUFFER_COUNT; i++) {
-        if (channel->buffers[i] == NULL)
-            continue;
-        munmap(channel->buffers[i], BUFFER_SIZE);
+    if (channel->buffer != NULL && channel->mapped_size > 0) {
+        munmap(channel->buffer, channel->mapped_size);
+        channel->buffer = NULL;
+        channel->mapped_size = 0;
     }
-    // Close file descriptor for "/dev/dmadc". Any error returned from this
-    // is ignored for now. If the file is no longer open, we don't care.
+    // Close file descriptor for "/dev/dmadc". Any errors returned from this
+    // are ignored for now. If the file is no longer open, we don't care.
     close(channel->fd);
     return 0;
 }

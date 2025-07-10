@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2024 Jonas Drotleff
+ * Copyright (C) 2024-2025 Jonas Drotleff
  * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -23,11 +23,7 @@
 #include <stdint.h>
 #endif
 
-#define BUFFER_COUNT 1024
-// Size of each buffer in bytes. A transfer is 32 bit so 4 bytes.
-// 8192 bytes (8KiB) correspond to 2048 transfers.
-// Buffer size must be a multiple of the page size.
-#define BUFFER_SIZE 8192
+#define DMADC_BUFFER_SIZE (8 * 4 * 1024 * 1024) // 8 * 4 MB = 32 MB
 
 enum dmadc_status {
     DMADC_COMPLETE = 0,

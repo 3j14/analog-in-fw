@@ -72,7 +72,6 @@ static struct argp argp = {options, parse_args, 0, adc_docs};
 int main(int argc, char *argv[]) {
     struct adc adc;
     int rc;
-    size_t i;
     enum dmadc_status status;
     struct adc_arguments args;
     FILE *outfile;
@@ -174,20 +173,26 @@ int main(int argc, char *argv[]) {
         usleep(250 * 1000);
 
         // Configure trigger
+        // Restart trigger if in non-continous mode
         *adc.trigger.config |= ADC_TRIGGER_CLEAR;
+        // Set trigger to non-continous
         *adc.trigger.config &= ~ADC_TRIGGER_CONTINUOUS;
+
         if (args.zone == 1) {
             *adc.trigger.config |= ADC_TRIGGER_ZONE_1;
         } else {
             *adc.trigger.config &= ~ADC_TRIGGER_ZONE_1;
         }
-        *adc.trigger.divider = args.div;
-        puts("Start transfer");
 
         set_timeout_ms(&channel, args.timeout_ms);
-        start_transfer(&channel, args.num * sizeof(uint32_t));
-        // Configure packetizer
+
+        // Configure packetizer and set up DMA
         set_packatizer_save(&adc.pack, args.num);
+        start_transfer(&channel, args.num * sizeof(uint32_t));
+        // Start the trigger after a short wait
+        usleep(250 * 1000);
+        puts("Start transfer");
+        *adc.trigger.divider = args.div;
 
         status = wait_for_transfer(&channel);
         switch (status) {
@@ -205,37 +210,19 @@ int main(int argc, char *argv[]) {
                 );
                 break;
         }
-        rc = dmadc_mmap_buffers(&channel, args.num * sizeof(uint32_t));
+        rc = dmadc_mmap_buffer(&channel, args.num * sizeof(uint32_t));
         if (rc != 0) {
-            fprintf(stderr, "Error: Unable to map buffers: Error %d\n", rc);
+            fprintf(stderr, "Error: Unable to map buffer: Error %d\n", rc);
         } else {
-            size_t total_buffers = args.num * sizeof(uint32_t) / BUFFER_SIZE;
-            size_t buffers_mod = (args.num * sizeof(uint32_t)) % BUFFER_SIZE;
-            for (i = 0; i < args.num * sizeof(uint32_t) / BUFFER_SIZE; i++) {
-                if (channel.buffers[i] == NULL)
-                    continue;
-                fwrite(
-                    channel.buffers[i],
-                    sizeof(uint32_t),
-                    BUFFER_SIZE / sizeof(uint32_t),
-                    outfile
-                );
-            }
-            if (buffers_mod > 0) {
-                if (channel.buffers[total_buffers + 1] != NULL) {
-                    fwrite(
-                        channel.buffers[total_buffers + 1],
-                        sizeof(uint32_t),
-                        buffers_mod / sizeof(uint32_t),
-                        outfile
-                    );
-                }
+            if (channel.buffer != NULL) {
+                fwrite(channel.buffer, sizeof(uint32_t), args.num, outfile);
             }
         }
+        fclose(outfile);
+        puts("Close DMA channel");
         close_dma_channel(&channel);
         *adc.trigger.divider = 0;
         set_packatizer_save(&adc.pack, 0);
-        fclose(outfile);
     }
     close_adc(&adc);
 }

@@ -7,8 +7,8 @@
 #define DEFAULT_OUTPUT_FILE "out.dat"
 #define DEFAULT_DIVIDER     20
 #define DEFAULT_TIMEOUT_MS  10000
-#define DEFAULT_NUM_SAMPLES BUFFER_SIZE / sizeof(uint32_t)
-#define MAX_NUM_SAMPLES     (BUFFER_SIZE * BUFFER_COUNT) / sizeof(uint32_t)
+#define DEFAULT_NUM_SAMPLES DMADC_BUFFER_SIZE / sizeof(uint32_t)
+#define MAX_NUM_SAMPLES     DMADC_BUFFER_SIZE / sizeof(uint32_t)
 #define MAX_NUM_AVG         0x10
 
 const char *argp_program_version = "adc 0.1.0";
