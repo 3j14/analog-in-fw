@@ -18,9 +18,8 @@
 #	case, the Linux kernel with version 'LINUX_VERSION_FULL' is downloaded from
 #	kernel.org.
 #	Limitations of the non-Xilinx kernel:
-#		- Missing USB support for the Red Pitaya
 #		- FPGA Manager does not expose flags in sysfs, fpgautil will print an
-#		error which can be ignored.
+#			error which can be ignored.
 #	
 #	Targets:
 #		- image: SD card image
@@ -84,11 +83,11 @@ SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VER
 LINUX_VERSION_FULL ?= 6.15.6
 LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
-LINUX_XILINX_VERSION := $(VIVADO_VERSION)
+LINUX_XILINX_VERSION := 2025.1
 LINUX_XILINX_TARBALL := https://github.com/Xilinx/linux-xlnx/archive/refs/tags/xilinx-v$(LINUX_XILINX_VERSION).tar.gz
 LINUX_XLNX ?= yes
 ifeq ($(LINUX_XLNX),yes)
-	LINUX_SOURCE_DIR := build/linux-xlnx
+	LINUX_SOURCE_DIR := build/linux-xlnx-$(LINUX_XILINX_VERSION)
 else
 	LINUX_SOURCE_DIR := build/linux-$(LINUX_VERSION)
 endif
@@ -323,17 +322,17 @@ build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	# Download Linux source and unpack to build directory
 	curl -L --output - $(LINUX_TARBALL) | tar x --xz --strip-components 1 -C $@
 	# Patch Linux to include additional drivers
-	# Skipped as this does not change anything, USB is still not working
-	# and LAN works out-of-the-box.
-	# patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
+	patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
 	curl -L --output $@/drivers/of/configfs.c $(OF_CONFIGFS_C)
 
-build/linux-xlnx:
+build/linux-xlnx-$(LINUX_XILINX_VERSION):
 	mkdir -p $@
 	curl -L --output - $(LINUX_XILINX_TARBALL) | tar xz --strip-components 1 -C $@
+	# Patch Linux to include additional drivers
+	patch -d $(@D) -p 0 <linux/linux-xlnx-$(LINUX_XILINX_VERSION).patch
 
 build/fpgautil.c:
 	# Download fpgautil

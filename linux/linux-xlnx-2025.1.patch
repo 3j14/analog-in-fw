@@ -1,0 +1,16 @@
+diff -rupN old/linux-xlnx/drivers/net/phy/intel-xway.c linux-xlnx/drivers/net/phy/intel-xway.c
+--- old/linux-xlnx-2025.1/drivers/net/phy/intel-xway.c
++++ linux-xlnx-2025.1/drivers/net/phy/intel-xway.c
+@@ -252,6 +252,12 @@ static int xway_gphy_config_init(struct
+ 	if (err)
+ 		return err;
+ 
++	/* Set SGMII RX & TX timing skew to 2 ns & 2.5 ns respectively. */
++	/* Set MII power supply to 2V5. */
++	err = phy_write(phydev, 0x17, 0x4D00);
++	if (err)
++		return err;
++
+ 	phy_write_mmd(phydev, MDIO_MMD_VEND2, XWAY_MMD_LEDCH,
+ 		      XWAY_MMD_LEDCH_NACS_NONE |
+ 		      XWAY_MMD_LEDCH_SBF_F02HZ |
