@@ -1,0 +1,30 @@
+diff -rupN old/linux-6.15/drivers/of/Kconfig linux-6.15/drivers/of/Kconfig
+--- old/linux-6.15/drivers/of/Kconfig
++++ linux-6.15/drivers/of/Kconfig
+@@ -126,4 +126,15 @@ config OF_OVERLAY_KUNIT_TEST
+ config OF_NUMA
+ 	bool
+ 
++config OF_CONFIGFS
++	bool "Device Tree Overlay ConfigFS interface"
++	select CONFIGFS_FS
++	depends on OF_OVERLAY
++	help
++	  Select this option to enable simple user-space driven DT overlay
++	  interface to support device tree manipulated at runtime.
++	  Say Y here to include this support.
++
++	  If unsure, say N.
++
+ endif # OF
+diff -rupN old/linux-6.15/drivers/of/Makefile linux-6.15/drivers/of/Makefile
+--- old/linux-6.15/drivers/of/Makefile
++++ linux-6.15/drivers/of/Makefile
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-y = base.o cpu.o device.o module.o platform.o property.o
+ obj-$(CONFIG_OF_KOBJ) += kobj.o
++obj-$(CONFIG_OF_CONFIGFS) += configfs.o
+ obj-$(CONFIG_OF_DYNAMIC) += dynamic.o
+ obj-$(CONFIG_OF_FLATTREE) += fdt.o empty_root.dtb.o
+ obj-$(CONFIG_OF_EARLY_FLATTREE) += fdt_address.o

@@ -17,7 +17,11 @@
 #	changing the value of 'LINUX_XLNX' to anything other than 'yes'. In that
 #	case, the Linux kernel with version 'LINUX_VERSION_FULL' is downloaded from
 #	kernel.org.
-#
+#	Limitations of the non-Xilinx kernel:
+#		- Missing USB support for the Red Pitaya
+#		- FPGA Manager does not expose flags in sysfs, fpgautil will print an
+#		error which can be ignored.
+#	
 #	Targets:
 #		- image: SD card image
 #		- software: Software part of the projects (binary executable)
@@ -42,7 +46,6 @@
 #		- image-software
 #		- image-fpga
 #
-SHELL=/bin/bash
 .ONESHELL:
 SHELL := /usr/bin/env
 .SHELLFLAGS := bash -eu -o pipefail -c
@@ -75,16 +78,19 @@ DEVICE_TREE_VER ?= $(VIVADO_VERSION)
 DEVICE_TREE_TARBALL := https://github.com/Xilinx/device-tree-xlnx/archive/refs/tags/xilinx_v$(DEVICE_TREE_VER).tar.gz
 SSBL_VERSION ?= 20231206
 SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VERSION).tar.gz
-LINUX_VERSION_FULL ?= 6.12.6
+# Current LTS:
+# LINUX_VERSION_FULL ?= 6.12.38
+# Latest kernel:
+LINUX_VERSION_FULL ?= 6.15.6
 LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
 LINUX_XILINX_VERSION := $(VIVADO_VERSION)
 LINUX_XILINX_TARBALL := https://github.com/Xilinx/linux-xlnx/archive/refs/tags/xilinx-v$(LINUX_XILINX_VERSION).tar.gz
 LINUX_XLNX ?= yes
 ifeq ($(LINUX_XLNX),yes)
-	LINUX_SOURCE_DIR := $(abspath ./build/linux-xlnx)
+	LINUX_SOURCE_DIR := build/linux-xlnx
 else
-	LINUX_SOURCE_DIR := $(abspath ./build/linux-$(LINUX_VERSION))
+	LINUX_SOURCE_DIR := build/linux-$(LINUX_VERSION)
 endif
 
 LINUX_MOD_DIR := build/kernel/lib/modules/$(LINUX_VERSION_FULL)-xilinx
@@ -312,11 +318,13 @@ build/zImage.bin: $(LINUX_SOURCE_DIR)
 		modules
 	cp $</arch/arm/boot/zImage $@
 
-$(abspath build/linux-$(LINUX_VERSION)): $(LINUX_OTHER_SOURCES)
+build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
 	mkdir -p $@
 	# Download Linux source and unpack to build directory
 	curl -L --output - $(LINUX_TARBALL) | tar x --xz --strip-components 1 -C $@
 	# Patch Linux to include additional drivers
+	# Skipped as this does not change anything, USB is still not working
+	# and LAN works out-of-the-box.
 	# patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
