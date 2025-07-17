@@ -1,20 +1,18 @@
 ifneq ($(KERNELRELEASE),)
 	obj-m: dmadc.o
 else
-LINUX_VERSION ?= 6.12
-KERNEL_DIR ?= $(abspath ../../build/linux-$(LINUX_VERSION))
+LINUX_SOURCE_DIR ?= $(abspath ../../build/linux-6.12)
 INSTALL_MOD_PATH ?= $(abspath ../../build/kernel)
-MAKE_FLAGS := ARCH=arm
-MAKE_FLAGS += LLVM=1
+LINUX_MAKE_FLAGS ?= ARCH=arm LLVM=1
 
 default:
-	$(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD
+	$(MAKE) -C $(LINUX_SOURCE_DIR) $(LINUX_MAKE_FLAGS) M=$$PWD
 
 modules_install: default
-	$(MAKE) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) -C $(KERNEL_DIR) $(MAKE_FLAGS) modules_install M=$$PWD
+	$(MAKE) -C $(LINUX_SOURCE_DIR) INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) $(LINUX_MAKE_FLAGS) modules_install M=$$PWD
 
 clean:
-	if [ -d "$(KERNEL_DIR)" ]; then $(MAKE) -C $(KERNEL_DIR) $(MAKE_FLAGS) M=$$PWD clean; fi
+	if [ -d "$(KERNEL_DIR)" ]; then $(MAKE) -C $(LINUX_SOURCE_DIR) $(LINUX_MAKE_FLAGS) M=$$PWD clean; fi
 
 .PHONY: default modules_install clean
 

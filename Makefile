@@ -12,6 +12,12 @@
 #	Projects are located in the 'projects' directory, their name refers
 #	to the name of their directory. The default project is 'adc'.
 #
+#	Kernel configuration:
+#	The default kernel is the Xilinx Linux kernel. This can be changed by
+#	changing the value of 'LINUX_XLNX' to anything other than 'yes'. In that
+#	case, the Linux kernel with version 'LINUX_VERSION_FULL' is downloaded from
+#	kernel.org.
+#
 #	Targets:
 #		- image: SD card image
 #		- software: Software part of the projects (binary executable)
@@ -72,6 +78,15 @@ SSBL_TARBALL := https://github.com/pavel-demin/ssbl/archive/refs/tags/$(SSBL_VER
 LINUX_VERSION_FULL ?= 6.12.6
 LINUX_VERSION := $(basename $(LINUX_VERSION_FULL))
 LINUX_TARBALL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION_FULL).tar.xz
+LINUX_XILINX_VERSION := $(VIVADO_VERSION)
+LINUX_XILINX_TARBALL := https://github.com/Xilinx/linux-xlnx/archive/refs/tags/xilinx-v$(LINUX_XILINX_VERSION).tar.gz
+LINUX_XLNX ?= yes
+ifeq ($(LINUX_XLNX),yes)
+	LINUX_SOURCE_DIR := $(abspath ./build/linux-xlnx)
+else
+	LINUX_SOURCE_DIR := $(abspath ./build/linux-$(LINUX_VERSION))
+endif
+
 LINUX_MOD_DIR := build/kernel/lib/modules/$(LINUX_VERSION_FULL)-xilinx
 FPGAUTIL_VERSION ?= $(VIVADO_VERSION)
 FPGAUTIL_C := https://github.com/Xilinx/meta-xilinx/raw/refs/tags/xlnx-rel-v$(FPGAUTIL_VERSION)/meta-xilinx-core/recipes-bsp/fpga-manager-script/files/fpgautil.c
@@ -109,6 +124,8 @@ CFLAGS += -Wall
 LINUX_MAKE_FLAGS := ARCH=arm
 LINUX_MAKE_FLAGS += CFLAGS="$(LINUX_CFLAGS)"
 LINUX_MAKE_FLAGS += LLVM=1
+export LINUX_MAKE_FLAGS
+export LINUX_SOURCE_DIR
 
 SOURCES := $(wildcard library/*/*.v)
 SOURCES += $(wildcard library/*/*.sv)
@@ -173,7 +190,7 @@ image-boot: image-base build/boot.bin
 	./scripts/image.sh boot $(PROJECT)
 
 image-kernel: image-base $(LINUX_MOD_DIR)/updates/dmadc.ko $(LINUX_MOD_DIR)/modules.order
-	./scripts/image.sh kernel $(PROJECT) -l ./build/linux-$(LINUX_VERSION)
+	./scripts/image.sh kernel $(PROJECT) -l $(LINUX_SOURCE_DIR)
 
 image-software: image-base build/fpgautil $(EXTRA_EXE) ./linux/resize-sd
 	./scripts/image.sh software $(PROJECT) $(EXTRA_EXE)
@@ -277,12 +294,12 @@ $(LINUX_MOD_DIR)/updates/dmadc.ko: linux/dma/dmadc.ko
 	$(MAKE) -C $(<D) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
 
 $(LINUX_MOD_DIR)/modules.order: build/zImage.bin	
-	$(MAKE) -C build/linux-$(LINUX_VERSION) $(LINUX_MAKE_FLAGS) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
+	$(MAKE) -C $(LINUX_SOURCE_DIR) $(LINUX_MAKE_FLAGS) INSTALL_MOD_PATH=$(abspath build/kernel) modules_install
 
 linux/dma/dmadc.ko: linux/dma/dmadc.h linux/dma/dmadc.c build/zImage.bin
 	$(MAKE) -C $(@D)
 
-build/zImage.bin: build/linux-$(LINUX_VERSION)
+build/zImage.bin: $(LINUX_SOURCE_DIR)
 	# Adapted from Pavel Demin's 'red-pitaya-notes' project.
 	# Builds the Linux kernel with 'xilinx_zynq_defconfig'.
 	#
@@ -295,16 +312,20 @@ build/zImage.bin: build/linux-$(LINUX_VERSION)
 		modules
 	cp $</arch/arm/boot/zImage $@
 
-build/linux-$(LINUX_VERSION): $(LINUX_OTHER_SOURCES)
+$(abspath build/linux-$(LINUX_VERSION)): $(LINUX_OTHER_SOURCES)
 	mkdir -p $@
 	# Download Linux source and unpack to build directory
 	curl -L --output - $(LINUX_TARBALL) | tar x --xz --strip-components 1 -C $@
 	# Patch Linux to include additional drivers
-	patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
+	# patch -d $(@D) -p 0 <linux/linux-$(LINUX_VERSION).patch
 	patch -d $(@D) -p 0 <linux/linux-configfs-$(LINUX_VERSION).patch
 	# Copy additional sources and the configuration
 	cp linux/xilinx_zynq_defconfig $@/arch/arm/configs
 	curl -L --output $@/drivers/of/configfs.c $(OF_CONFIGFS_C)
+
+build/linux-xlnx:
+	mkdir -p $@
+	curl -L --output - $(LINUX_XILINX_TARBALL) | tar xz --strip-components 1 -C $@
 
 build/fpgautil.c:
 	# Download fpgautil
