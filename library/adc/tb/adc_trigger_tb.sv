@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module adc_model #(
+module adc_cnv_model #(
     parameter integer CNV_TIME = 282
 ) (
     input  wire resetn,

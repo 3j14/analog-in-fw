@@ -8,18 +8,18 @@ module adc_spi_controller #(
     input wire resetn,
 
     input  wire  [NUM_SDI-1:0] spi_sdi,
-    output logic               spi_sdo,
-    output logic               spi_csn,
+    output logic               spi_sdo = 1'b0,
+    output logic               spi_csn = 1'b1,
     output wire                spi_resetn,
     output wire                spi_clk,
 
     input wire start_acq,
     input wire start_reg_wrt,
-    output logic acq_done,
-    output logic reg_wrt_done,
+    output logic acq_done = 1'b0,
+    output logic reg_wrt_done = 1'b0,
     output wire busy,
     input wire [23:0] reg_cmd,
-    output logic [31:0] cnv_data
+    output logic [31:0] cnv_data = 0
 
 );
     // Number of SPI clock cycles for conversion results or register writes
@@ -39,7 +39,7 @@ module adc_spi_controller #(
     logic [23:0] reg_data_shift;
     logic spi_clk_enable;
 
-    assign busy = (state != IDLE);
+    assign busy = (state != IDLE) || !resetn;
     assign spi_resetn = resetn;
 
     BUFHCE #(
@@ -50,6 +50,7 @@ module adc_spi_controller #(
         .CE(spi_clk_enable),
         .I (clk)
     );
+
 
     always_ff @(posedge clk or negedge resetn) begin
         if (!resetn) begin
@@ -65,7 +66,7 @@ module adc_spi_controller #(
         end else begin
             acq_done <= 1'b0;
             reg_wrt_done <= 1'b0;
-            unique case (state)
+            case (state)
                 IDLE: begin
                     if (start_acq) begin
                         state <= (SETUP_CS) ? SETUP : ACQUISITION;
@@ -132,6 +133,7 @@ module adc_spi_controller #(
                         reg_wrt_done <= 1'b1;
                     end
                 end
+                default: state <= IDLE;
             endcase
         end
     end
