@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module adc_manager_tb #(
+module axis_adc_tb #(
     parameter unsigned NUM_SDI = 4,
     // clock frequencies in MHz
     parameter real ACLK_FREQ = 125.0,
@@ -23,7 +23,7 @@ module adc_manager_tb #(
     always #(CnvPeriod) cnv_clk <= cnv_clk_en;
 
     always_ff @(posedge aclk) begin
-        cnv_clk <= 1'b0;
+        if (cnv_clk) cnv_clk <= #(AclkPeriodHalf) 1'b0;
     end
 
     wire spi_clk_out;
@@ -52,7 +52,7 @@ module adc_manager_tb #(
 
     logic [31:0] test_pattern = 32'h8BADF00D;
 
-    adc_spi_manager #(
+    axis_adc #(
         .NUM_SDI (NUM_SDI),
         .SETUP_CS(1'b0)
     ) dut (
@@ -145,28 +145,29 @@ module adc_manager_tb #(
         @(negedge m_axis_tready) m_axis_tdata = {8'b0, 1'b0, 15'h0014, 8'h01};
         @(posedge aclk) m_axis_tvalid = 1;
 
-        @(posedge m_axis_tready) $display(reg_cmd_received);
+        @(posedge m_axis_tready)  // Last register command is transmitted
+        @(posedge m_axis_tready)
         if (reg_cmd_received == 24'h01401) begin
             $display("Device configured");
         end else $error("Register received does not match");
-        //
-        // #(4 * Period);
-        // @(posedge clk) cnv_clk_en = 1;
-        // @(posedge clk) s_axis_tready = 1;
-        //
-        // @(negedge s_axis_tvalid) $display("%x", axis_data_received);
-        // $display("%x", test_pattern);
-        // if (axis_data_received == test_pattern) begin
-        //     $display("Test pattern received from ADC");
-        // end else $error("Received invalid data");
-        //
-        // // Try again with different test pattern
-        // #(4 * Period) test_pattern = 32'h23ff42;
-        // @(negedge s_axis_tvalid)
-        // if (axis_data_received == test_pattern) begin
-        //     $display("Test pattern received from ADC");
-        // end else $error("Received invalid data");
-        // $finish();
+
+        #(4 * SpiClkPeriodHalf);
+        @(posedge aclk) cnv_clk_en = 1;
+        @(posedge aclk) s_axis_tready = 1;
+
+        @(negedge s_axis_tvalid) $display("%x", axis_data_received);
+        $display("%x", test_pattern);
+        if (axis_data_received == test_pattern) begin
+            $display("Test pattern received from ADC");
+        end else $error("Received invalid data");
+
+        // Try again with different test pattern
+        #(4 * SpiClkPeriodHalf) test_pattern = 32'h23ff42;
+        @(negedge s_axis_tvalid)
+        if (axis_data_received == test_pattern) begin
+            $display("Test pattern received from ADC");
+        end else $error("Received invalid data");
+        $finish();
     end
 
 endmodule

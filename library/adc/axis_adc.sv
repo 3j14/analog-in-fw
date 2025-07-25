@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module adc_spi_manager #(
+module axis_adc #(
     parameter integer NUM_SDI  = 4,
     parameter logic   SETUP_CS = 1'b0
 ) (
@@ -29,9 +29,8 @@ module adc_spi_manager #(
     // Status (aclk domain)
     output wire ready
 );
-    typedef enum logic [1:0] {
+    typedef enum logic {
         IDLE,
-        WAIT_ACQ,
         WAIT_REG_WRT
     } axi_state_t;
 
@@ -40,12 +39,14 @@ module adc_spi_manager #(
     wire [31:0] cnv_data;
     assign m_axis_tdata = cnv_data;
     reg [23:0] reg_cmd;
-    logic start_acq, start_reg_wrt = 1'b0;
-    wire start_acq_spi, start_reg_wrt_spi;
+    logic start_reg_wrt = 1'b0;
+    wire start_reg_wrt_spi;
 
     wire acq_done;
     wire reg_wrt_done;
     wire spi_busy_aclk;
+    wire cnv_data_valid;
+    wire cnv_data_valid_spi;
 
     wire acq_done_spi;
     wire reg_wrt_done_spi;
@@ -63,12 +64,13 @@ module adc_spi_manager #(
             state <= IDLE;
             m_axis_tvalid <= 1'b0;
             reg_cmd <= 0;
-            start_acq <= 1'b0;
             start_reg_wrt <= 1'b0;
         end else begin
-            start_acq <= 1'b0;
             start_reg_wrt <= 1'b0;
             if (m_axis_tvalid && m_axis_tready) begin
+                m_axis_tvalid <= 1'b0;
+            end
+            if (!cnv_data_valid) begin
                 m_axis_tvalid <= 1'b0;
             end
             case (state)
@@ -77,15 +79,9 @@ module adc_spi_manager #(
                         reg_cmd <= s_axis_tdata[23:0];
                         start_reg_wrt <= 1'b1;
                         state <= WAIT_REG_WRT;
-                    end else if (trigger_acq && !spi_busy_aclk) begin
-                        start_acq <= 1'b1;
-                        state <= WAIT_ACQ;
                     end
-                end
-                WAIT_ACQ: begin
-                    if (acq_done) begin
+                    if (acq_done && cnv_data_valid) begin
                         m_axis_tvalid <= 1'b1;
-                        state <= IDLE;
                     end
                 end
                 WAIT_REG_WRT: begin
@@ -105,13 +101,13 @@ module adc_spi_manager #(
         .REG_OUTPUT(1),
         .RST_USED(1),
         .SIM_ASSERT_CHK(1)
-    ) cdc_start_acq (
-        .dest_pulse(start_acq_spi),
-        .dest_clk(spi_clk),
-        .dest_rst(~spi_resetn),
-        .src_pulse(start_acq),
-        .src_clk(aclk),
-        .src_rst(~aresetn)
+    ) cdc_cnv_data_valid (
+        .dest_pulse(cnv_data_valid),
+        .dest_clk(aclk),
+        .dest_rst(~aresetn),
+        .src_pulse(cnv_data_valid_spi),
+        .src_clk(spi_clk),
+        .src_rst(~spi_resetn)
     );
 
     xpm_cdc_pulse #(
@@ -209,13 +205,14 @@ module adc_spi_manager #(
         .spi_clk(spi_clk_out),
         .spi_resetn(spi_resetn_out),
 
-        .start_acq(start_acq_spi),
+        .trigger_acq(trigger_acq),
         .start_reg_wrt(start_reg_wrt_spi),
         .acq_done(acq_done_spi),
         .reg_wrt_done(reg_wrt_done_spi),
 
-        .reg_cmd (reg_cmd_spi),
+        .reg_cmd(reg_cmd_spi),
         .cnv_data(cnv_data_spi),
+        .cnv_data_valid(cnv_data_valid_spi),
 
         .busy(busy_spi)
     );

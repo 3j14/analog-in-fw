@@ -13,14 +13,14 @@ module adc_spi_controller #(
     output wire                spi_resetn,
     output wire                spi_clk,
 
-    input wire start_acq,
+    input wire trigger_acq,
     input wire start_reg_wrt,
     output logic acq_done = 1'b0,
     output logic reg_wrt_done = 1'b0,
     output wire busy,
     input wire [23:0] reg_cmd,
-    output logic [31:0] cnv_data = 0
-
+    output logic [31:0] cnv_data = 0,
+    output logic cnv_data_valid = 1'b0
 );
     // Number of SPI clock cycles for conversion results or register writes
     localparam int SpiConvCycles = 32 / NUM_SDI;
@@ -37,6 +37,7 @@ module adc_spi_controller #(
 
     logic [7:0] cycle_count;
     logic [23:0] reg_data_shift;
+    logic [31:0] cnv_data_transfer;
     logic spi_clk_enable;
 
     assign busy = (state != IDLE) || !resetn;
@@ -59,7 +60,9 @@ module adc_spi_controller #(
             spi_sdo <= 1'b0;
             spi_clk_enable <= 1'b0;
             cycle_count <= 0;
+            cnv_data_transfer <= 0;
             cnv_data <= 0;
+            cnv_data_valid <= 1'b1;
             acq_done <= 1'b0;
             reg_wrt_done <= 1'b0;
             reg_data_shift <= 0;
@@ -68,12 +71,14 @@ module adc_spi_controller #(
             reg_wrt_done <= 1'b0;
             case (state)
                 IDLE: begin
-                    if (start_acq) begin
+                    if (trigger_acq) begin
                         state <= (SETUP_CS) ? SETUP : ACQUISITION;
                         spi_csn <= 1'b0;
                         spi_clk_enable <= ~SETUP_CS;
                         cycle_count <= SpiConvCycles;
                         cnv_data <= 0;
+                        cnv_data_transfer <= 0;
+                        cnv_data_valid <= 1'b0;
                         spi_sdo <= 1'b0;
                     end else if (start_reg_wrt) begin
                         state <= (SETUP_CS) ? SETUP : REG_WRT;
@@ -104,9 +109,11 @@ module adc_spi_controller #(
                 ACQUISITION: begin
                     if (cycle_count > 0) begin
                         cycle_count <= cycle_count - 1;
-                        cnv_data <= {cnv_data[31-NUM_SDI:0], {<<{spi_sdi}}};
+                        cnv_data_transfer <= {cnv_data_transfer[31-NUM_SDI:0], {<<{spi_sdi}}};
 
                         if (cycle_count == 1) begin
+                            cnv_data <= {cnv_data_transfer[31-NUM_SDI:0], {<<{spi_sdi}}};
+                            cnv_data_valid <= 1'b1;
                             spi_clk_enable <= 1'b0;
                         end
                     end else begin
