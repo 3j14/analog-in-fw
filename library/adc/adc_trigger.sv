@@ -1,9 +1,16 @@
 `timescale 1ns / 1ps
 
 module adc_trigger (
-    input  wire        aclk,
-    input  wire        aresetn,
-    output wire        trigger,
+    input wire aclk,
+    input wire aresetn,
+
+    input wire spi_clk,
+    input wire spi_resetn,
+
+    input wire cnv_clk,
+    input wire cnv_clk_locked,
+
+    output wire        trigger_acq,
     output wire        cnv,
     input  wire        busy,
     input  wire        last,
@@ -64,20 +71,20 @@ module adc_trigger (
     // | 31-0 |
     // +------+
     // - DIV: Unsigned integer, number of clock cycles per conversion.
-    localparam reg [29:0] AddrConfig = 30'h0000_0100;
-    localparam reg [29:0] AddrDivider = 30'h0000_0104;
+    localparam logic [29:0] AddrConfig = 30'h0000_0100;
+    localparam logic [29:0] AddrDivider = 30'h0000_0104;
 
-    reg [31:0] divider_reg = 32'b0;
-    reg [31:0] config_reg = 32'b0;
+    logic [31:0] divider_reg = 32'b0;
+    logic [31:0] config_reg = 32'b0;
 
-    reg [31:0] axi_lite_awaddr;
-    reg        axi_lite_awready;
-    reg        axi_lite_wready;
-    reg [ 1:0] axi_lite_bresp;
-    reg        axi_lite_bvalid;
-    reg [31:0] axi_lite_araddr;
-    reg        axi_lite_arready;
-    reg        axi_lite_rvalid;
+    logic [31:0] axi_lite_awaddr;
+    logic        axi_lite_awready;
+    logic        axi_lite_wready;
+    logic [ 1:0] axi_lite_bresp;
+    logic        axi_lite_bvalid;
+    logic [31:0] axi_lite_araddr;
+    logic        axi_lite_arready;
+    logic        axi_lite_rvalid;
 
     assign s_axi_lite_awready = axi_lite_awready;
     assign s_axi_lite_wready  = axi_lite_wready;
@@ -86,14 +93,8 @@ module adc_trigger (
     assign s_axi_lite_arready = axi_lite_arready;
     assign s_axi_lite_rvalid  = axi_lite_rvalid;
 
-    localparam reg [1:0] StateIdle = 2'b00;
-    localparam reg [1:0] StateRaddr = 2'b01;
-    localparam reg [1:0] StateRdata = 2'b11;
-    localparam reg [1:0] StateWaddr = 2'b01;
-    localparam reg [1:0] StateWdata = 2'b11;
-
-    reg [1:0] state_write = StateIdle;
-    reg [1:0] state_read = StateIdle;
+    axi4lite_write_state_t state_write = WADDR;
+    axi4lite_read_state_t  state_read = RADDR;
 
     // AXI4-Lite state machine for write operations
     always @(posedge aclk or negedge aresetn) begin
@@ -102,15 +103,12 @@ module adc_trigger (
             axi_lite_wready <= 0;
             axi_lite_bvalid <= 0;
             axi_lite_awaddr <= 0;
-            state_write <= StateIdle;
+            state_write <= WADDR;
         end else begin
-            case (state_write)
-                StateIdle: begin
-                    axi_lite_awready <= 1;
-                    axi_lite_wready <= 1;
-                    state_write <= StateWaddr;
-                end
-                StateWaddr: begin
+            axi_lite_awready <= 1;
+            axi_lite_wready  <= 1;
+            unique case (state_write)
+                WADDR: begin
                     if (s_axi_lite_awvalid && s_axi_lite_awready) begin
                         axi_lite_awaddr <= s_axi_lite_awaddr;
                         if (s_axi_lite_wvalid) begin
@@ -118,29 +116,28 @@ module adc_trigger (
                             // time, address is available from the
                             // s_axi_lite_awaddr input.
                             axi_lite_awready <= 1;
-                            state_write <= StateWaddr;
+                            state_write <= WADDR;
                             axi_lite_bvalid <= 1;
                         end else begin
                             // Write will be performed in the upcoming cycles,
                             // disable axi_lite_bvalid if it has been read.
                             axi_lite_awready <= 0;
-                            state_write <= StateWdata;
+                            state_write <= WDATA;
                             if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                         end
                     end else begin
                         if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                     end
                 end
-                StateWdata: begin
+                WDATA: begin
                     if (s_axi_lite_wvalid && axi_lite_wready) begin
-                        state_write <= StateWaddr;
+                        state_write <= WADDR;
                         axi_lite_bvalid <= 1;
                         axi_lite_awready <= 1;
                     end else begin
                         if (s_axi_lite_bready && axi_lite_bvalid) axi_lite_bvalid <= 0;
                     end
                 end
-                default: state_write <= StateIdle;
             endcase
         end
     end
@@ -151,29 +148,25 @@ module adc_trigger (
             axi_lite_araddr <= 0;
             axi_lite_arready <= 0;
             axi_lite_rvalid <= 0;
-            state_read <= StateIdle;
+            state_read <= RADDR;
         end else begin
-            case (state_read)
-                StateIdle: begin
-                    axi_lite_arready <= 1;
-                    state_read <= StateRaddr;
-                end
-                StateRaddr: begin
+            axi_lite_arready <= 1;
+            unique case (state_read)
+                RADDR: begin
                     if (s_axi_lite_arvalid && s_axi_lite_arready) begin
                         axi_lite_araddr <= s_axi_lite_araddr;
                         axi_lite_rvalid <= 1;
-                        axi_lite_arready <= 1;
-                        state_read <= StateRdata;
+                        state_read <= RDATA;
                     end
                 end
-                StateRdata: begin
+                RDATA: begin
                     if (s_axi_lite_rvalid && s_axi_lite_rready) begin
                         axi_lite_rvalid <= 0;
                         axi_lite_arready <= 1;
-                        state_read <= StateRaddr;
+                        state_read <= RADDR;
                     end
                 end
-                default: state_read <= StateIdle;
+                default: state_read <= IDLE;
             endcase
         end
     end
@@ -208,6 +201,7 @@ module adc_trigger (
                         divider_reg <= write_register(
                             s_axi_lite_wdata, s_axi_lite_wstrb, divider_reg
                         );
+                        divider_write_trigger <= 1'b1;  // Trigger PLL reconfiguration
                         axi_lite_bresp <= 2'b00;
                     end
                     default: axi_lite_bresp <= 2'b10;
@@ -216,15 +210,62 @@ module adc_trigger (
         end
     end
 
+    wire last_spi;
+    wire [31:0] divider_reg_spi;
+    wire [31:0] config_reg_spi;
+
+    xpm_cdc_pulse #(
+        .DEST_SYNC_FF(2),
+        .INIT_SYNC_FF(0),
+        .REG_OUTPUT(1),
+        .RST_USED(1),
+        .SIM_ASSERT_CHK(1)
+    ) cdc_last (
+        .dest_pulse(last_spi),
+        .dest_clk(spi_clk),
+        .dest_rst(~spi_resetn),
+        .src_pulse(last),
+        .src_clk(aclk),
+        .src_rst(~aresetn)
+    );
+
+    xpm_cdc_array_single #(
+        .DEST_SYNC_FF(2),
+        .INIT_SYNC_FF(0),
+        .SIM_ASSERT_CHK(1),
+        .SRC_INPUT_REG(1),
+        .WIDTH(24)
+    ) cdc_divider_reg (
+        .dest_out(divider_reg_spi),
+        .dest_clk(spi_clk),
+        .src_in  (divider_reg),
+        .src_clk (aclk)
+    );
+
+    xpm_cdc_array_single #(
+        .DEST_SYNC_FF(2),
+        .INIT_SYNC_FF(0),
+        .SIM_ASSERT_CHK(1),
+        .SRC_INPUT_REG(1),
+        .WIDTH(24)
+    ) cdc_config_reg (
+        .dest_out(config_reg_spi),
+        .dest_clk(spi_clk),
+        .src_in  (config_reg),
+        .src_clk (aclk)
+    );
+
     adc_trigger_impl adc_trigger_0 (
-        .clk(aclk),
-        .resetn(aresetn),
-        .divider(divider_reg),
-        .cfg(config_reg),
-        .trigger(trigger),
+        .clk(spi_clk),
+        .resetn(spi_resetn),
+        .cnv_clk_raw(pll_cnv_clk),
+        .cnv_clk_locked(pll_locked),
+        .divider(divider_reg_spi),
+        .cfg(config_reg_spi),
+        .trigger(trigger_acq),
         .cnv(cnv),
         .busy(busy),
-        .last(last),
+        .last(last_spi),
         .ready(ready)
     );
 endmodule
@@ -232,6 +273,8 @@ endmodule
 module adc_trigger_impl (
     input  wire        clk,
     input  wire        resetn,
+    input  wire        cnv_clk,
+    input  wire        cnv_clk_locked,
     input  wire [31:0] divider,
     input  wire [31:0] cfg,
     output wire        trigger,
@@ -240,14 +283,25 @@ module adc_trigger_impl (
     input  wire        last,
     input  wire        ready
 );
-    localparam reg [1:0] StateIdle = 2'b00;
-    localparam reg [1:0] StateRun = 2'b10;
-    localparam reg [1:0] StateStop = 2'b01;
-    reg [ 1:0] state_clk = StateIdle;
-    reg [31:0] counter = 32'b0;
-    reg        adc_busy = 0;
-    reg        acq_pending = 0;
-    reg        acq_trigger = 0;
+    localparam logic [1:0] StateIdle = 2'b00;
+    localparam logic [1:0] StateRun = 2'b10;
+    localparam logic [1:0] StateStop = 2'b01;
+    logic [1:0] state_clk = StateIdle;
+    logic       adc_busy = 0;
+    logic       acq_pending = 0;
+    logic       acq_trigger = 0;
+
+    wire        cnv_clk_enable;
+    assign cnv_clk_enable = cnv_clk_locked & ready & state_clk[1];
+
+    BUFHCE #(
+        .CE_TYPE ("SYNC"),
+        .INIT_OUT(0)
+    ) cnv_clk_buffer (
+        .O (cnv),
+        .CE(cnv_clk_enable),
+        .I (cnv_clk)
+    );
 
     // State machine for conversion clock
     always @(posedge clk or negedge resetn) begin
@@ -270,18 +324,6 @@ module adc_trigger_impl (
         end
     end
 
-    // Clock-divider for conversion trigger
-    always @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
-            counter <= 32'b0;
-        end else if (counter < divider && divider != 0 && state_clk[1]) begin
-            counter <= counter + 1;
-        end else begin
-            counter <= 32'b0;
-        end
-    end
-
-    assign cnv = ready & state_clk[1] & (counter == divider) & |counter;
     assign trigger = ready & acq_trigger;
 
     always @(posedge clk or negedge resetn) begin

@@ -1,3 +1,13 @@
+typedef enum logic {
+    WADDR,
+    WDATA
+} axi4lite_write_state_t;
+
+typedef enum logic {
+    RADDR,
+    RDATA
+} axi4lite_read_state_t;
+
 function automatic [31:0] write_register;
     input reg [31:0] s_axi_lite_wdata;
     input reg [3:0] s_axi_lite_wstrb;
